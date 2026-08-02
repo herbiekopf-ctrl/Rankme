@@ -1,0 +1,35 @@
+alter function public.set_updated_at() set search_path = public, pg_temp;
+
+revoke execute on function public.handle_new_ranked_user() from public, anon, authenticated;
+revoke execute on function public.get_cohort_consensus(uuid, uuid, jsonb, integer) from public, anon, authenticated;
+revoke execute on function public.get_ranking_affinity(uuid, uuid, uuid, integer, uuid, uuid, jsonb, integer) from public, anon, authenticated;
+grant execute on function public.get_cohort_consensus(uuid, uuid, jsonb, integer) to service_role;
+grant execute on function public.get_ranking_affinity(uuid, uuid, uuid, integer, uuid, uuid, jsonb, integer) to service_role;
+
+create index aggregate_positions_entity_id_idx on public.aggregate_positions (entity_id);
+create index aggregates_cycle_id_idx on public.aggregates (cycle_id);
+create index attribute_definitions_source_id_idx on public.attribute_definitions (source_id);
+create index datasets_active_version_id_idx on public.datasets (active_version_id);
+create index datasets_source_id_idx on public.datasets (source_id);
+create index entities_created_by_idx on public.entities (created_by);
+create index entities_entity_type_id_idx on public.entities (entity_type_id);
+create index entity_attribute_values_attribute_definition_id_idx on public.entity_attribute_values (attribute_definition_id);
+create index entity_attribute_values_entity_id_idx on public.entity_attribute_values (entity_id);
+create index entity_external_ids_entity_id_idx on public.entity_external_ids (entity_id);
+create index entity_relationships_to_entity_id_idx on public.entity_relationships (to_entity_id);
+create index group_memberships_user_id_idx on public.group_memberships (user_id);
+create index groups_owner_id_idx on public.groups (owner_id);
+create index ranking_events_actor_id_idx on public.ranking_events (actor_id);
+create index ranking_events_ranking_id_idx on public.ranking_events (ranking_id, created_at);
+create index ranking_template_entities_entity_id_idx on public.ranking_template_entities (entity_id);
+create index ranking_template_versions_entity_type_id_idx on public.ranking_template_versions (entity_type_id);
+create index ranking_templates_created_by_idx on public.ranking_templates (created_by);
+create index rankings_author_id_idx on public.rankings (author_id, published_at desc);
+create index rankings_cycle_id_idx on public.rankings (cycle_id);
+create index rankings_dataset_version_id_idx on public.rankings (dataset_version_id);
+create index rankings_supersedes_ranking_id_idx on public.rankings (supersedes_ranking_id);
+create index source_jobs_dataset_id_idx on public.source_jobs (dataset_id, created_at desc);
+create index source_jobs_dataset_version_id_idx on public.source_jobs (dataset_version_id);
+create index user_cohort_values_cohort_value_id_idx on public.user_cohort_values (cohort_value_id, user_id);
+create index user_entity_affiliations_entity_id_idx on public.user_entity_affiliations (entity_id, affiliation_type, user_id);
+create index validation_results_source_job_id_idx on public.validation_results (source_job_id);

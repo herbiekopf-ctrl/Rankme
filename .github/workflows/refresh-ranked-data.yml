@@ -1,0 +1,34 @@
+name: Refresh Ranked data
+
+on:
+  schedule:
+    - cron: "17 12 * * 0"
+  workflow_dispatch:
+    inputs:
+      years:
+        description: JSON array of seasons to refresh
+        required: false
+        default: "[2026]"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Request shared CFBD refresh
+        env:
+          RANKED_APP_URL: ${{ secrets.RANKED_APP_URL }}
+          RANKED_INGEST_TOKEN: ${{ secrets.RANKED_INGEST_TOKEN }}
+          REQUESTED_YEARS: ${{ inputs.years || '[2026]' }}
+        run: |
+          test -n "$RANKED_APP_URL"
+          test -n "$RANKED_INGEST_TOKEN"
+          curl --fail-with-body --retry 2 --max-time 300 \
+            --request POST \
+            --header "Authorization: Bearer $RANKED_INGEST_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "{\"years\":$REQUESTED_YEARS}" \
+            "$RANKED_APP_URL/api/admin/refresh"
