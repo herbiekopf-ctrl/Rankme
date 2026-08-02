@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TeamMark } from "./TeamMark";
-import { buildCustomTemplate, createManualDataset, customDatasetUrl, decodeCustomPollConfig } from "@/lib/domain/customPolls";
+import { buildCustomTemplate, customDatasetUrl, decodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { seedStadiumDataset, seedTeamDataset } from "@/lib/domain/seed";
 import { getTemplate } from "@/lib/domain/templates";
 import type { DatasetEnvelope } from "@/lib/domain/types";
@@ -23,22 +23,25 @@ export function PublishedBallot({
   const customConfig = useMemo(() => decodeCustomPollConfig(customConfigRaw), [customConfigRaw]);
   const template = customConfig ? buildCustomTemplate(customConfig) : getTemplate(templateId) ?? getTemplate("top-25")!;
   const [dataset, setDataset] = useState<DatasetEnvelope>(() => customConfig
-    ? customConfig.subject === "manual"
-      ? createManualDataset(customConfig)
-      : { id: "custom-loading", version: "loading", source: "seed", sourceLabel: "Loading saved snapshot", refreshedAt: customConfig.createdAt, stale: false, connected: false, entities: [] }
+    ? { id: "custom-loading", version: "loading", source: "seed", sourceLabel: "Loading saved snapshot", refreshedAt: customConfig.createdAt, stale: false, connected: false, entities: [] }
     : template.entityType === "stadium" ? seedStadiumDataset() : seedTeamDataset());
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (customConfig && customConfig.subject !== "manual") {
+    if (customConfig) {
       fetch(customDatasetUrl(customConfig))
         .then((response) => response.ok ? response.json() as Promise<DatasetEnvelope> : Promise.reject(new Error("Dataset failed")))
         .then(setDataset)
         .catch(() => undefined);
       return;
     }
-    if (customConfig || template.entityType !== "team") return;
-    fetch("/api/college-football/teams?year=2026")
+    const datasetUrl = template.entityType === "stadium"
+      ? "/api/college-football/rankables?year=2026&subject=stadiums"
+      : template.entityType === "team"
+        ? "/api/college-football/teams?year=2026"
+        : null;
+    if (!datasetUrl) return;
+    fetch(datasetUrl)
       .then((response) => response.ok ? response.json() as Promise<DatasetEnvelope> : Promise.reject(new Error("Dataset failed")))
       .then(setDataset)
       .catch(() => undefined);

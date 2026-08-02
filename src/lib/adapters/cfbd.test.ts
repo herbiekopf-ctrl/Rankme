@@ -25,7 +25,7 @@ describe("CFBD adapter", () => {
     expect(entity.attributes.pointsPerGame).toBe(31);
   });
 
-  it("uses the server-only bearer key for one shared four-endpoint snapshot", async () => {
+  it("uses the server-only bearer key for one shared twenty-six-dataset snapshot", async () => {
     vi.stubEnv("CFBD_API_KEY", "test-secret-never-rendered");
     const responses: Record<string, unknown> = {
       "/teams/fbs": [{
@@ -45,19 +45,21 @@ describe("CFBD adapter", () => {
     const requestSpy = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
       expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer test-secret-never-rendered");
-      expect(url.searchParams.get("year")).toBe("2026");
-      return new Response(JSON.stringify(responses[url.pathname]), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.pathname !== "/venues") expect(url.searchParams.get("year")).toBe("2026");
+      return new Response(JSON.stringify(responses[url.pathname] ?? []), { status: 200, headers: { "Content-Type": "application/json" } });
     });
     vi.stubGlobal("fetch", requestSpy);
 
     const snapshot = await pullCollegeFootballSnapshot(2026);
 
-    expect(requestSpy).toHaveBeenCalledTimes(4);
-    expect(snapshot.upstreamRequests).toBe(4);
+    expect(requestSpy).toHaveBeenCalledTimes(26);
+    expect(snapshot.upstreamRequests).toBe(26);
     expect(snapshot.teams).toHaveLength(1);
     expect(snapshot.players[0]?.attributes.position).toBe("WR");
     expect(snapshot.stadiums[0]?.name).toBe("Memorial Stadium");
     expect(snapshot.towns[0]?.name).toBe("Clemson");
+    expect(snapshot.units).toHaveLength(2);
+    expect(snapshot.teamSeasons).toHaveLength(1);
     expect(snapshot.warnings).toEqual([]);
   });
 

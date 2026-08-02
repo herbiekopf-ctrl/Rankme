@@ -7,13 +7,17 @@ Ranked is a mobile-first college football ballot builder backed by a reusable ra
 - Searchable, drag-and-drop Top 25 builder with tap and keyboard alternatives
 - Undo/redo, per-draft autosave, and exact-length publish validation
 - Published ballot preview and shareable URL
-- Contextual record, conference, last-result, next-opponent, and six comparison metrics
-- In-workflow team comparison and sortable metric leaderboards
-- Custom poll creator for FBS teams, conference schools, mascots, towns, stadiums, players by position, and pasted option lists
+- Contextual records, results, power ratings, production, efficiency, recruiting, talent, and roster metrics
+- Generic in-workflow comparisons and sortable metric leaderboards for every data-backed entity type
+- Canonical poll creator for teams, players, coaches, conferences, games, stadiums, towns, mascots, recruiting classes, recruits, transfers, units, team seasons, and draft picks
+- Unlimited user-written ranking questions with database-backed eligibility pools; typed or pasted answer choices are deliberately rejected
 - Generic entity/template/ranking domain model
 - Second "Best Stadiums" template using the same ranking canvas
-- Demonstration consensus and demographic cohort filtering with privacy suppression
-- Server-only CollegeFootballData adapter with a shared weekly snapshot and fallback fixtures
+- Relational cross-poll affinity explorer and demographic cohort filtering with a hard 25-person privacy floor
+- Optional consented preference profiles using coarse region, age band, and football-experience categories
+- Open browsing and local drafts, with permanent email-link accounts required only to publish or contribute to consensus/demographics
+- Server-only CollegeFootballData adapter with a 26-dataset shared weekly snapshot and independent optional-feed failures
+- Supabase PostgreSQL schema for entities, relationships, metrics, templates, rankings, placements, demographics, groups, aggregates, snapshots, and ingestion jobs
 - Domain, consensus, and adapter tests
 
 ## Local setup
@@ -32,20 +36,42 @@ CFBD_API_KEY=your_key_here
 
 Never prefix the variable with `NEXT_PUBLIC_`. The browser calls Ranked's own API routes; only the server adapter reads the secret and sends the upstream Bearer header.
 
+Add the Supabase project settings through `.env.local`, GitHub Codespaces secrets, and your deployment environment:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
+```
+
+The URL and publishable key identify the app to Supabase. `SUPABASE_SECRET_KEY` is server-only and must never be exposed in a `NEXT_PUBLIC_` variable, committed file, browser bundle, or chat message. The legacy `SUPABASE_SERVICE_ROLE_KEY` name is supported as a fallback.
+
+In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled. Add the local/deployed `/auth/callback` URL to **Authentication → URL Configuration → Redirect URLs** so email-link sign-in can return users to their saved draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
+
 Without a key, the app intentionally remains functional using frozen seed data and labels the dataset as demo data.
 
-After starting the app, open `/api/college-football/status?year=2026`. A working secret returns `"status":"connected"`, `"usingCfbdSnapshot":true`, the snapshot version, refresh time, and entity count. The endpoint never returns the credential.
+After starting the app, open `/api/college-football/status?year=2025`, then repeat with `year=2026`. A working CFBD secret returns `"status":"connected"`, `"usingCfbdSnapshot":true`, the snapshot version, refresh time, and entity count. Open `/api/platform/status` to verify that Supabase is reachable, its migration is ready, the server write secret is configured, and the active relational dataset exists. Neither endpoint returns a credential.
 
 ## Data refresh model
 
-The first server request after the weekly refresh window makes four upstream CFBD requests in parallel: FBS teams, records, games, and rosters. Ranked transforms those responses into one versioned snapshot containing teams, players, mascots, towns, stadiums, and comparison metrics. Every ranking and comparison after that reads the saved snapshot and makes zero per-user CFBD requests.
+The first server request after the weekly refresh window requests 26 CFBD datasets in parallel. The import covers teams, records, games, rosters, coaches, venues, team/player season statistics, advanced efficiency, Elo, SRS, SP, FPI, PPA, official polls, recruiting classes and recruits, talent, returning production, transfer portal entries, player usage/success, opponent-adjusted metrics, and NFL draft picks. Ranked transforms them into one coherent versioned snapshot with canonical entities, relationships, and a dynamically discovered metric catalog. Odds are intentionally excluded as rankable entities. Every ranking and comparison after that reads the shared snapshot and makes zero per-user CFBD requests.
 
 - Default refresh window: 7 days (`CFBD_REFRESH_SECONDS=604800`)
 - Default local snapshot: `.data/college-football-2026.json` (ignored by git)
 - Optional persistent directory: `CFBD_SNAPSHOT_DIR=/mounted/path`
-- Serverless fallback: Next.js caches the four upstream responses for the same refresh window when the runtime filesystem is not writable
+- Production system of record: Supabase PostgreSQL, written by the server-only ingestion client
+- Scheduled refresh: `.github/workflows/refresh-ranked-data.yml` calls the protected `/api/admin/refresh` endpoint every Monday at 08:17 UTC after deployment
+- Serverless/local fallback: Next.js cache, memory, and `.data` keep the UI usable when database persistence is not configured
 
-If the roster endpoint is unavailable, the team snapshot still succeeds and the UI labels player polls unavailable instead of dropping all CFBD data.
+Only teams, records, and games are required to publish a snapshot. Every richer feed is independent: if coaches, roster, advanced stats, or a paid metric is unavailable, Ranked records a warning and preserves the other datasets.
+
+For automatic refreshes, set a long random `RANKED_INGEST_TOKEN` in the deployment environment and add `RANKED_APP_URL` plus the matching `RANKED_INGEST_TOKEN` as GitHub Actions secrets. The endpoint uses constant-time token comparison, accepts only `POST`, and never returns a credential. Until the app has an always-on deployment URL, use the two initial status requests from the setup section.
+
+## Supabase migrations
+
+Tracked migrations live in `supabase/migrations`. The foundation creates 29 RLS-enabled tables, 18 entity types (14 currently rankable), coarse demographic taxonomies, canonical source mappings, append-only ranking events, cohort consensus, cross-poll affinity, and transactional community-poll/ballot functions. Aggregate functions are server-only and return no placement or demographic detail below the 25-person threshold. Canonical option pools and permanent-account checks are enforced in PostgreSQL, not only in React.
+
+`/api/insights/catalog` discovers public relational polls. `/api/insights/affinity` executes the real server-only affinity function and returns either a privacy-cleared aggregate or a suppressed result with no sample size or placements.
 
 ## Checks
 
@@ -63,4 +89,4 @@ npm run build
 - `src/app/api`: server-only dataset, catalog, rankable-list, and health boundaries
 - `src/components`: reusable ranking canvas and product views
 
-The current MVP uses browser storage for anonymous drafts and custom-poll definitions. Shared links carry the poll definition and ordered entity IDs. The next production slice is persisted identity, PostgreSQL rankings/snapshots, and immutable server-side publication.
+When Supabase is configured, community polls, draft rankings, placements, published ballots, consented cohort values, snapshots, entities, metrics, and relationships are persisted in PostgreSQL. Browser storage remains a resilient offline/local draft fallback. Shared links still carry enough context to render a receipt, while aggregate-eligible public ballots use the immutable relational publication record.

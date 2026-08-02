@@ -12,13 +12,18 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ComparisonTool } from "./ComparisonTool";
+import { SignInGate } from "./SignInGate";
 import { SortableEntityCard } from "./SortableEntityCard";
 import { TeamMark } from "./TeamMark";
 import { encodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { encodeRanking, insertEntity, moveEntity, removeEntity, validateRanking } from "@/lib/domain/ranking";
 import type { CustomPollConfig, DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
 import { entityMatches, formatAttribute, timeAgo } from "@/lib/utils";
+import { persistBuiltInRankingDraft, persistCustomPoll, persistRankingDraft, publishPersistedRanking } from "@/lib/supabase/community";
+import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "@/lib/supabase/browser";
+import type { User } from "@supabase/supabase-js";
 
 type HistoryState = { past: string[][]; present: string[]; future: string[][] };
 
@@ -31,18 +36,40 @@ export function RankingBuilder({
   initialDataset: DatasetEnvelope;
   customConfig?: CustomPollConfig;
 }) {
+  const router = useRouter();
   const dataset = initialDataset;
   const [history, setHistory] = useState<HistoryState>({ past: [], present: [], future: [] });
   const [query, setQuery] = useState("");
   const [conference, setConference] = useState("All");
-  const [saveState, setSaveState] = useState<"loading" | "saving" | "saved">("loading");
+  const [candidateSort, setCandidateSort] = useState("name");
+  const [saveState, setSaveState] = useState<"loading" | "saving" | "saved" | "cloud">("loading");
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [publishError, setPublishError] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  const [rankedUser, setRankedUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [effectiveConfig, setEffectiveConfig] = useState(customConfig);
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `ranked:draft:${template.id}`;
+
+  useEffect(() => {
+    const client = getBrowserSupabaseClient();
+    if (!client) {
+      Promise.resolve().then(() => setAuthReady(true));
+      return;
+    }
+    let active = true;
+    getRankedUser(client).then((user) => { if (active) setRankedUser(user); }).catch(() => undefined).finally(() => { if (active) setAuthReady(true); });
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
+      setRankedUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+    return () => { active = false; data.subscription.unsubscribe(); };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -79,20 +106,38 @@ export function RankingBuilder({
         updatedAt: new Date().toISOString(),
       };
       window.localStorage.setItem(storageKey, JSON.stringify(draft));
-      setSaveState("saved");
+      if (effectiveConfig?.remoteTemplateVersionId && isPermanentRankedUser(rankedUser)) {
+        persistRankingDraft(effectiveConfig, dataset, history.present)
+          .then(() => setSaveState("cloud"))
+          .catch(() => setSaveState("saved"));
+      } else {
+        setSaveState("saved");
+      }
     }, 350);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [dataset.version, history.past.length, history.present, storageKey, template.id, template.version]);
+  }, [dataset, dataset.version, effectiveConfig, history.past.length, history.present, rankedUser, storageKey, template.id, template.version]);
 
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
   const rankedEntities = history.present.map((id) => entitiesById.get(id)).filter((entity): entity is RankableEntity => Boolean(entity));
-  const rankedSet = new Set(history.present);
+  const rankedSet = useMemo(() => new Set(history.present), [history.present]);
   const conferences = [...new Set(dataset.entities.map((entity) => String(entity.attributes.conference ?? "Other")))].sort();
-  const candidates = dataset.entities.filter((entity) =>
-    !rankedSet.has(entity.id) &&
-    entityMatches(entity, query) &&
-    (conference === "All" || entity.attributes.conference === conference),
-  );
+  const candidates = useMemo(() => {
+    const options = dataset.entities.filter((entity) =>
+      !rankedSet.has(entity.id) &&
+      entityMatches(entity, query) &&
+      (conference === "All" || entity.attributes.conference === conference),
+    );
+    if (candidateSort === "name") return options.sort((a, b) => a.name.localeCompare(b.name));
+    const metric = dataset.metricDefinitions?.find((definition) => definition.key === candidateSort);
+    if (!metric) return options;
+    return options.sort((a, b) => {
+      const left = typeof a.attributes[candidateSort] === "number" ? a.attributes[candidateSort] as number : null;
+      const right = typeof b.attributes[candidateSort] === "number" ? b.attributes[candidateSort] as number : null;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      return metric.direction === "asc" ? left - right : right - left;
+    });
+  }, [candidateSort, conference, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
   const validationErrors = validateRanking(template, history.present);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
   const sourceBadge = dataset.source === "collegefootballdata"
@@ -132,12 +177,33 @@ export function RankingBuilder({
     setCompareOpen(true);
   }
 
-  const customQuery = customConfig ? `&config=${encodeCustomPollConfig(customConfig)}` : "";
+  const customQuery = effectiveConfig ? `&config=${encodeCustomPollConfig(effectiveConfig)}` : "";
   const sharePath = `/ballot/${customConfig ? "custom-poll" : "preseason-2026"}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
   async function copyShareLink() {
     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function publishRanking() {
+    setPublishing(true);
+    setPublishError("");
+    try {
+      let rankingId: string;
+      if (effectiveConfig) {
+        const remoteConfig = await persistCustomPoll(effectiveConfig, dataset);
+        setEffectiveConfig(remoteConfig);
+        window.localStorage.setItem(`ranked:custom-poll:${remoteConfig.id}`, JSON.stringify(remoteConfig));
+        rankingId = await persistRankingDraft(remoteConfig, dataset, history.present);
+      } else {
+        rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
+      }
+      await publishPersistedRanking(rankingId);
+      router.push(sharePath);
+    } catch (reason) {
+      setPublishError(reason instanceof Error ? reason.message : "The relational ballot could not be published.");
+      setPublishing(false);
+    }
   }
 
   return (
@@ -160,9 +226,9 @@ export function RankingBuilder({
 
       <section className="builder-shell shell">
         <div className="builder-toolbar">
-          <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : "Draft saved"}</div>
+          <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : saveState === "cloud" ? "Relational draft saved" : "Local draft saved"}</div>
           <div className="toolbar-actions">
-            {!!dataset.metricDefinitions?.length && <button className={compareOpen ? "comparison-toggle active" : "comparison-toggle"} onClick={() => setCompareOpen((open) => !open)}>⇄ Compare teams</button>}
+            {!!dataset.metricDefinitions?.length && <button className={compareOpen ? "comparison-toggle active" : "comparison-toggle"} onClick={() => setCompareOpen((open) => !open)}>⇄ Compare data</button>}
             <button onClick={undo} disabled={!history.past.length}>↶ Undo</button>
             <button onClick={redo} disabled={!history.future.length}>↷ Redo</button>
             <button className="publish-button" disabled={validationErrors.length > 0} onClick={() => setPublishOpen(true)}>{template.publishLabel}</button>
@@ -194,7 +260,7 @@ export function RankingBuilder({
                     />
                   ))}
                   {Array.from({ length: Math.min(remaining, history.present.length ? 3 : 5) }, (_, index) => (
-                    <div className="empty-rank" key={index}><span>{history.present.length + index + 1}</span><p>{history.present.length ? "Drop or add the next pick" : "Add a team from the candidate pool"}</p></div>
+                    <div className="empty-rank" key={index}><span>{history.present.length + index + 1}</span><p>{history.present.length ? "Drop or add the next pick" : "Add an option from the candidate pool"}</p></div>
                   ))}
                 </div>
               </SortableContext>
@@ -213,15 +279,16 @@ export function RankingBuilder({
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={template.searchPlaceholder} />
                 {query && <button onClick={() => setQuery("")} aria-label="Clear search">×</button>}
               </label>
-              {template.entityType === "team" && (
+              {dataset.entities.some((entity) => entity.attributes.conference) && (
                 <div className="filter-row">
-                  <button className={conference === "All" ? "active" : ""} onClick={() => setConference("All")}>All teams</button>
+                  <button className={conference === "All" ? "active" : ""} onClick={() => setConference("All")}>All options</button>
                   <select value={conference} onChange={(event) => setConference(event.target.value)} aria-label="Filter by conference">
                     <option>All</option>
                     {conferences.map((value) => <option key={value}>{value}</option>)}
                   </select>
                 </div>
               )}
+              {!!dataset.metricDefinitions?.length && <label className="candidate-sort"><span>Sort candidates</span><select value={candidateSort} onChange={(event) => setCandidateSort(event.target.value)}><option value="name">Name · A–Z</option>{dataset.metricDefinitions.map((metric) => <option key={metric.key} value={metric.key}>{metric.group ? `${metric.group} · ` : ""}{metric.label}</option>)}</select></label>}
             </div>
             <div className="candidate-list">
               {candidates.map((entity) => (
@@ -256,10 +323,11 @@ export function RankingBuilder({
               {rankedEntities.slice(0, 5).map((entity, index) => <span key={entity.id}><b>{index + 1}</b>{entity.name}</span>)}
               <em>+ {Math.max(0, rankedEntities.length - 5)} more</em>
             </div>
-            <div className="publish-actions">
-              <Link className="button button-primary" href={sharePath}>Open public ballot</Link>
-              <button className="button button-secondary" onClick={copyShareLink}>{copied ? "Copied!" : "Copy share link"}</button>
-            </div>
+            {authReady && isPermanentRankedUser(rankedUser) ? <div className="publish-actions">
+              <button className="button button-primary" disabled={publishing} onClick={publishRanking}>{publishing ? "Publishing…" : "Publish relational ballot"}</button>
+              <button className="button button-secondary" onClick={copyShareLink}>{copied ? "Copied!" : "Copy preview link"}</button>
+            </div> : authReady ? <SignInGate nextPath={customConfig ? `/rank/custom/${customConfig.id}` : `/rank/${template.id}`} /> : <div className="sign-in-receipt"><strong>Checking your account…</strong></div>}
+            {publishError && <p className="creator-error" role="alert">{publishError}</p>}
           </section>
         </div>
       )}

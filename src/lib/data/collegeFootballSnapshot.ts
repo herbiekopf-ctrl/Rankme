@@ -3,6 +3,7 @@ import "server-only";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pullCollegeFootballSnapshot, type CollegeFootballSnapshot } from "@/lib/adapters/cfbd";
+import { persistCollegeFootballSnapshot } from "@/lib/data/supabaseSnapshot";
 
 export type SnapshotResult = {
   snapshot: CollegeFootballSnapshot;
@@ -31,9 +32,19 @@ function looksLikeSnapshot(value: unknown, year: number): value is CollegeFootba
     && typeof candidate.refreshedAt === "string"
     && Array.isArray(candidate.teams)
     && Array.isArray(candidate.players)
+    && Array.isArray(candidate.coaches)
+    && Array.isArray(candidate.conferences)
+    && Array.isArray(candidate.games)
     && Array.isArray(candidate.mascots)
     && Array.isArray(candidate.towns)
-    && Array.isArray(candidate.stadiums);
+    && Array.isArray(candidate.stadiums)
+    && Array.isArray(candidate.recruitingClasses)
+    && Array.isArray(candidate.recruits)
+    && Array.isArray(candidate.transfers)
+    && Array.isArray(candidate.units)
+    && Array.isArray(candidate.teamSeasons)
+    && Array.isArray(candidate.draftPicks)
+    && Boolean(candidate.metricsByEntityType);
 }
 
 async function readSavedSnapshot(year: number): Promise<CollegeFootballSnapshot | null> {
@@ -71,7 +82,12 @@ async function loadOrRefresh(year: number): Promise<SnapshotResult> {
   }
 
   try {
-    const snapshot = await pullCollegeFootballSnapshot(year);
+    let snapshot = await pullCollegeFootballSnapshot(year);
+    try {
+      await persistCollegeFootballSnapshot(snapshot);
+    } catch {
+      snapshot = { ...snapshot, warnings: [...snapshot.warnings, "The CFBD snapshot is usable, but its relational Supabase save failed. Check /api/platform/status and server logs."] };
+    }
     const savedToDisk = await saveSnapshot(snapshot);
     return { snapshot, stale: false, refreshMode: savedToDisk ? "saved-snapshot" : "framework-cache" };
   } catch (error) {

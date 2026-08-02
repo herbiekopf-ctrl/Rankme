@@ -2,6 +2,7 @@ export type EntityAttributeValue = string | number | boolean | null;
 
 export type RankableEntity = {
   id: string;
+  relationalId?: string;
   externalIds?: Record<string, string>;
   entityType: string;
   name: string;
@@ -25,6 +26,8 @@ export type MetricDefinition = {
   description: string;
   format: "integer" | "decimal" | "percentage" | "signed";
   direction: "asc" | "desc";
+  group?: "Resume" | "Scoring" | "Production" | "Efficiency" | "Power" | "Roster" | "History" | "Physical" | "Other";
+  source?: string;
 };
 
 export type RankingTemplate = {
@@ -63,30 +66,56 @@ export type DatasetEnvelope = {
 
 export type RankingSubject =
   | "teams"
-  | "conference-teams"
-  | "mascots"
-  | "towns"
-  | "stadiums"
   | "players"
-  | "manual";
+  | "coaches"
+  | "conferences"
+  | "games"
+  | "stadiums"
+  | "towns"
+  | "mascots"
+  | "recruiting-classes"
+  | "recruits"
+  | "transfers"
+  | "units"
+  | "team-seasons"
+  | "draft-picks";
+
+export type CatalogFilterDefinition = {
+  key: string;
+  label: string;
+  values: string[];
+  defaultValue?: string;
+};
 
 export type CustomPollConfig = {
   id: string;
   title: string;
   subject: RankingSubject;
+  entityType: string;
+  year: number;
   length: number;
-  conference?: string;
-  position?: string;
-  manualOptions?: string[];
+  filters: Record<string, string>;
+  description?: string;
+  visibility?: "public" | "unlisted" | "private";
+  rankingMethod?: "manual" | "pairwise" | "scoring" | "tier";
+  remoteTemplateId?: string;
+  remoteTemplateVersionId?: string;
   createdAt: string;
 };
 
 export type PollSubjectOption = {
   id: RankingSubject;
+  entityType: string;
   label: string;
+  singularLabel: string;
   description: string;
   count: number;
   available?: boolean;
+  group?: "People" | "Programs" | "Places" | "Competition" | "History" | "Culture";
+  metricCount?: number;
+  icon?: string;
+  exampleQuestions?: string[];
+  filters?: CatalogFilterDefinition[];
 };
 
 export type PollCatalog = {
@@ -97,9 +126,22 @@ export type PollCatalog = {
   refreshMode: DatasetEnvelope["refreshMode"];
   upstreamRequests: number;
   warnings?: string[];
+  availableYears: number[];
   conferences: string[];
   positions: string[];
   subjects: PollSubjectOption[];
+};
+
+export type PlatformStatus = {
+  databaseConfigured: boolean;
+  schemaReady: boolean;
+  serverWriteConfigured: boolean;
+  projectRef?: string;
+  tableCount: number;
+  entityTypeCount: number;
+  entityCount: number;
+  activeDatasetVersion?: string;
+  message: string;
 };
 
 export type RankingDraft = {

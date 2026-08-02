@@ -15,8 +15,9 @@ export default function HomePage() {
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/rank/top-25">Build my Top 25 <span>→</span></Link>
-            <Link className="text-link" href="/create">Create any poll</Link>
+            <Link className="text-link" href="/create">Create a data-backed poll</Link>
             <Link className="text-link" href="/consensus">See fan consensus</Link>
+            <Link className="text-link" href="/insights">Explore ranking connections</Link>
           </div>
           <div className="hero-proof">
             <div><strong>5 min</strong><span>to build a ballot</span></div>
@@ -55,6 +56,10 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="relation-band">
+        <div className="shell relation-grid"><div><p className="kicker">THE RELATIONAL ADVANTAGE</p><h2>A ranking is more than a list.</h2><p>Filter public rankings by region, age band, fanbase, experience, group, or participation—then see what people who make one choice tend to believe across every other poll.</p></div><div className="relation-example"><span>PEOPLE WHO PUT CLEMSON TOP 5 ALSO…</span><strong>Rank Dabo +4.1 spots</strong><strong>Rate Death Valley +5.3 spots</strong><strong>Favor the ACC +1.9 spots</strong><small>Aggregate patterns only · 25-person privacy minimum</small></div><Link className="button button-primary" href="/insights">Explore connections →</Link></div>
+      </section>
+
       <section className="how-band">
         <div className="shell how-grid">
           <div><span>01</span><strong>Find the contenders</strong><p>Search every FBS team and use the facts that matter to you.</p></div>
@@ -84,7 +89,7 @@ export default function HomePage() {
           <Link href="/create" className="template-card">
             <span className="template-icon">＋</span>
             <h3>Create Your Own</h3>
-            <p>Teams, ACC schools, mascots, towns, stadiums, WRs—or paste your own options.</p>
+            <p>Ask anything about teams, players, coaches, games, places, recruiting, transfers, units, seasons, and more.</p>
             <strong>Choose the list →</strong>
           </Link>
         </div>

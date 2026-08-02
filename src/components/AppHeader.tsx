@@ -11,7 +11,8 @@ export function AppHeader() {
         <Link href="/rank/top-25">Build</Link>
         <Link href="/create">Create a poll</Link>
         <Link href="/consensus">Consensus</Link>
-        <Link href="/#explore">Explore</Link>
+        <Link href="/insights">Connections</Link>
+        <Link href="/profile">Your perspective</Link>
       </nav>
       <Link className="header-cta" href="/create">Make your poll</Link>
     </header>
