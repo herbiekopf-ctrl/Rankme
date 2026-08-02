@@ -51,13 +51,13 @@ export type RankingTemplate = {
 export type DatasetEnvelope = {
   id: string;
   version: string;
-  source: "collegefootballdata" | "seed" | "curated";
+  source: "collegefootballdata" | "curated";
   sourceLabel: string;
   refreshedAt: string;
   stale: boolean;
   connected: boolean;
   credentialConfigured?: boolean;
-  refreshMode?: "saved-snapshot" | "framework-cache" | "fixture";
+  refreshMode?: "saved-snapshot" | "framework-cache";
   upstreamRequests?: number;
   warnings?: string[];
   metricDefinitions?: MetricDefinition[];

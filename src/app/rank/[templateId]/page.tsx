@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { RankingBuilder } from "@/components/RankingBuilder";
 import { loadRankableDataset, loadTeamDataset } from "@/lib/data/rankableDatasets";
-import { seedTeamDataset } from "@/lib/domain/seed";
 import { getTemplate } from "@/lib/domain/templates";
 
 export default async function RankingPage({ params }: { params: Promise<{ templateId: string }> }) {
@@ -12,6 +11,6 @@ export default async function RankingPage({ params }: { params: Promise<{ templa
     ? await loadRankableDataset(2026, "stadiums")
     : template.entityType === "team"
       ? await loadTeamDataset(2026)
-      : seedTeamDataset();
+      : await loadRankableDataset(2026, "teams");
   return <RankingBuilder template={template} initialDataset={dataset} />;
 }

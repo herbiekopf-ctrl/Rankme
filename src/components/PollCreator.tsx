@@ -4,9 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { rankableCategory } from "@/lib/domain/rankableCatalog";
 import type { CustomPollConfig, DatasetEnvelope, PlatformStatus, PollCatalog, RankingSubject } from "@/lib/domain/types";
-import { timeAgo } from "@/lib/utils";
-
-const GROUP_ORDER = ["Programs", "People", "Competition", "Places", "History", "Culture"] as const;
 const FILTER_LABELS: Record<string, string> = { conference: "Conference", team: "Team", position: "Position", classYear: "Class", week: "Week", completed: "Game status", conferenceGame: "Conference game", state: "State", dome: "Dome", grass: "Grass field", committedTo: "Committed to", stars: "Stars", origin: "From", destination: "To", side: "Unit", collegeConference: "College conference", collegeTeam: "College", round: "Draft round" };
 
 function filterValue(value: unknown): string {
@@ -136,53 +133,37 @@ export function PollCreator() {
   return (
     <div className="creator-page">
       <section className="creator-hero shell">
-        <div><p className="kicker">ASK ANYTHING. RANK REAL THINGS.</p><h1>Create a ranking in minutes.</h1><p>Write the question. Choose a real college-football category. Ranked supplies the eligible options, connected data, and comparison tools.</p></div>
-        <div className="creator-receipt">
-          <span className={platformStatus?.schemaReady ? "data-badge is-live" : "data-badge"}>{platformStatus?.schemaReady ? "Relational catalog ready" : "Database setup pending"}</span>
-          <strong>No typed-in options</strong>
-          <small>Every choice carries a stable entity ID, source record, season, relationships, and comparable metrics.</small>
-          {catalog && <><span className={catalog.connected ? "data-badge is-live" : "data-badge"}>{catalog.connected ? "CFBD snapshot connected" : "Demo catalog"}</span><small>{catalog.sourceLabel} · updated {timeAgo(catalog.refreshedAt)}</small></>}
-          {loadError && <strong className="stale-warning">{loadError}</strong>}
-        </div>
+        <div><p className="kicker">ONE POLL SLIP</p><h1>Create a poll.</h1><p>Ask the question, choose what people rank, and decide how long the list should be. The options and comparison data come from Ranked&apos;s real catalog.</p></div>
       </section>
 
-      <section className="creator-shell shell">
-        <div className="creator-step">
-          <div className="creator-step-heading"><span>01</span><div><h2>Choose what can be ranked.</h2><p>These are real, connected records—not a text box pretending to be a database.</p></div></div>
-          <div className="season-switcher"><span>Season</span>{(catalog?.availableYears ?? [2025, 2026]).map((value) => <button key={value} className={year === value ? "active" : ""} onClick={() => { setYear(value); setFilters({}); setCatalog(null); setLoadError(""); setPreviewState("loading"); }}>{value}</button>)}</div>
-          {GROUP_ORDER.map((group) => {
-            const options = (catalog?.subjects ?? []).filter((option) => option.group === group);
-            if (!options.length) return null;
-            return <div className="subject-section" key={group}><h3>{group}</h3><div className="subject-grid">{options.map((option) => (
-              <button key={option.id} disabled={option.available === false} className={`${subject === option.id ? "subject-card active" : "subject-card"}${option.available === false ? " unavailable" : ""}`} onClick={() => chooseSubject(option.id)}>
-                <span>{subject === option.id ? "✓" : option.icon}</span><strong>{option.label}</strong><small>{option.description}</small><em>{option.count.toLocaleString()} options · {option.metricCount ?? 0} metrics</em>
-              </button>
-            ))}</div></div>;
-          })}
-          {!catalog && !loadError && <div className="catalog-skeleton">Loading the rankable catalog…</div>}
+      <section className="poll-slip shell">
+        <div className="poll-slip-status">
+          <span className={platformStatus?.schemaReady ? "data-badge is-live" : "data-badge"}>{platformStatus?.schemaReady ? "Database ready" : "Database setup pending"}</span>
+          <span className={catalog?.connected ? "data-badge is-live" : "data-badge"}>{catalog?.connected ? "Real CFBD data connected" : "Real data not imported"}</span>
+          {loadError && <strong className="stale-warning">{loadError}</strong>}
         </div>
 
-        <div className="creator-step">
-          <div className="creator-step-heading"><span>02</span><div><h2>Narrow the eligible pool.</h2><p>Filters define which canonical records appear. Leave them broad for an open question.</p></div></div>
-          {availableFilters.length ? <div className="creator-form-grid">{availableFilters.map((filter) => (
-            <label className="creator-field" key={filter.key}><span>{filter.label}</span><select value={filters[filter.key] ?? "All"} onChange={(event) => { setPreviewState("loading"); setFilters((current) => ({ ...current, [filter.key]: event.target.value })); }}><option value="All">All {filter.label.toLocaleLowerCase()}</option>{filter.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
-          ))}</div> : <div className="no-filter-note"><strong>Everyone is eligible.</strong><span>This category does not need a filter for {year}.</span></div>}
-          <div className={`pool-receipt ${previewState}`}><div><span>ELIGIBLE OPTIONS</span><strong>{previewState === "loading" ? "Loading…" : optionCount.toLocaleString()}</strong></div><div><span>COMPARISON METRICS</span><strong>{previewState === "loading" ? "Loading…" : metricCount.toLocaleString()}</strong></div><div><span>SOURCE</span><strong>{preview?.sourceLabel ?? catalog?.sourceLabel ?? "Saved catalog"}</strong></div></div>
-        </div>
-
-        <div className="creator-step">
-          <div className="creator-step-heading"><span>03</span><div><h2>Ask the question.</h2><p>The wording is yours. The answer choices remain clean, searchable, and relational.</p></div></div>
+        <div className="poll-slip-grid">
+          <label className="creator-field wide"><span>What are people ranking?</span><select value={subject} onChange={(event) => chooseSubject(event.target.value as RankingSubject)} disabled={!catalog}>{(catalog?.subjects ?? []).map((option) => <option key={option.id} value={option.id} disabled={option.available === false}>{option.label}{option.available === false ? " · no imported data" : ` · ${option.count.toLocaleString()} options`}</option>)}</select></label>
+          <label className="creator-field"><span>Season</span><select value={year} onChange={(event) => { setYear(Number(event.target.value)); setFilters({}); setCatalog(null); setLoadError(""); setPreviewState("loading"); }}>{(catalog?.availableYears ?? [2025, 2026]).map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           {!!selectedSubject?.exampleQuestions?.length && <div className="question-starters"><span>START WITH AN IDEA</span>{selectedSubject.exampleQuestions.map((example) => <button key={example} onClick={() => chooseExample(example)}>{example}</button>)}</div>}
-          <div className="creator-form-grid">
-            <label className="creator-field wide"><span>Ranking question or title</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} placeholder="Most likely team to win the national title" /></label>
-            <label className="creator-field wide"><span>Guidance for rankers (optional)</span><textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain what should count, the time horizon, or how you want ties interpreted." rows={3} /></label>
-            <label className="creator-field"><span>Number of ranked spots</span><input type="number" min={2} max={Math.min(50, Math.max(2, optionCount))} value={length} onChange={(event) => setLength(Number(event.target.value))} /></label>
-            <label className="creator-field"><span>Visibility</span><select value={visibility} onChange={(event) => setVisibility(event.target.value as typeof visibility)}><option value="public">Public · eligible for consensus</option><option value="unlisted">Unlisted · anyone with link</option><option value="private">Private draft</option></select></label>
-          </div>
-          <div className="creator-summary"><div><span>QUESTION</span><strong>{title || "Untitled ranking"}</strong></div><div><span>FORMAT</span><strong>Top {length || 0} from {optionCount.toLocaleString()} {selectedSubject?.label.toLocaleLowerCase() ?? "options"}</strong></div><button className="button button-primary" onClick={createPoll}>Start ranking →</button></div>
-          <p className="creator-guardrail">You can build and save locally without an account. Sign in only when you publish or contribute to consensus.</p>
-          {error && <p className="creator-error" role="alert">{error}</p>}
+          <label className="creator-field wide"><span>Poll question or title</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} placeholder="Most likely team to win the national title" /></label>
+          <label className="creator-field wide"><span>Guidance for rankers (optional)</span><textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain what should count or the time horizon." rows={3} /></label>
+
+          {availableFilters.map((filter) => <label className="creator-field" key={filter.key}><span>{filter.label} (optional)</span><select value={filters[filter.key] ?? "All"} onChange={(event) => { setPreviewState("loading"); setFilters((current) => ({ ...current, [filter.key]: event.target.value })); }}><option value="All">All {filter.label.toLocaleLowerCase()}</option>{filter.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>)}
+          <label className="creator-field"><span>How many items should each person rank?</span><input type="number" min={2} max={Math.min(50, Math.max(2, optionCount))} value={length} onChange={(event) => setLength(Number(event.target.value))} /></label>
+          <label className="creator-field"><span>Visibility</span><select value={visibility} onChange={(event) => setVisibility(event.target.value as typeof visibility)}><option value="public">Public · included in consensus</option><option value="unlisted">Unlisted · link only</option><option value="private">Private draft</option></select></label>
         </div>
+
+        <div className={`poll-slip-receipt ${previewState}`}>
+          <div><span>REAL OPTIONS</span><strong>{previewState === "loading" ? "Loading…" : optionCount.toLocaleString()}</strong></div>
+          <div><span>METRICS</span><strong>{previewState === "loading" ? "Loading…" : metricCount.toLocaleString()}</strong></div>
+          <div><span>FORMAT</span><strong>Top {length || 0} {selectedSubject?.label.toLocaleLowerCase() ?? "items"}</strong></div>
+          <button className="button button-primary" onClick={createPoll}>Open ranking workspace →</button>
+        </div>
+        {!catalog?.connected && <p className="real-data-empty">No poll can be created until the protected CFBD import loads real options into Supabase. Fake options are never substituted.</p>}
+        <p className="creator-guardrail">You can build locally without an account. Publishing and contributing to consensus require sign-in. Every response is timestamped and assigned to its season/week period.</p>
+        {error && <p className="creator-error" role="alert">{error}</p>}
       </section>
     </div>
   );

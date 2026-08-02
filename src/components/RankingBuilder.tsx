@@ -45,6 +45,7 @@ export function RankingBuilder({
   const [saveState, setSaveState] = useState<"loading" | "saving" | "saved" | "cloud">("loading");
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishError, setPublishError] = useState("");
@@ -140,11 +141,8 @@ export function RankingBuilder({
   }, [candidateSort, conference, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
   const validationErrors = validateRanking(template, history.present);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
-  const sourceBadge = dataset.source === "collegefootballdata"
-    ? "CFBD snapshot connected"
-    : dataset.source === "seed"
-      ? dataset.credentialConfigured ? "CFBD refresh failed" : "Demo data"
-      : "Saved option list";
+  const sourceBadge = dataset.connected ? "Real CFBD data connected" : "Real data not imported";
+  const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
   function commit(next: string[]) {
     if (next.join("|") === history.present.join("|")) return;
@@ -220,11 +218,12 @@ export function RankingBuilder({
           <small>{dataset.sourceLabel} · {dataset.entities.length} options · updated {timeAgo(dataset.refreshedAt)}</small>
           {dataset.source === "collegefootballdata" && dataset.upstreamRequests && <small>One shared snapshot · {dataset.upstreamRequests} source calls · zero per-user CFBD calls</small>}
           {dataset.warnings?.map((warning) => <strong className="stale-warning" key={warning}>{warning}</strong>)}
-          {dataset.stale && <strong className="stale-warning">Live refresh failed; showing safe fallback.</strong>}
+          {dataset.stale && <strong className="stale-warning">No invented fallback is shown. Initialize or repair the real-data import.</strong>}
         </div>
       </section>
 
       <section className="builder-shell shell">
+        {!dataset.entities.length && <div className="builder-empty-state"><p className="kicker">REAL DATA REQUIRED</p><h2>This ranking has no imported options yet.</h2><p>Run the protected CFBD import. Ranked will not replace missing data with invented teams, players, statistics, or results.</p></div>}
         <div className="builder-toolbar">
           <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : saveState === "cloud" ? "Relational draft saved" : "Local draft saved"}</div>
           <div className="toolbar-actions">
@@ -300,6 +299,7 @@ export function RankingBuilder({
                     {entity.attributes.suggestion && <small>{formatAttribute(entity.attributes.suggestion)}</small>}
                   </div>
                   <div className="candidate-actions">
+                    <button className="details" onClick={() => setDetailId(entity.id)} aria-label={`Open ${entity.name} details`} title={`Open ${entity.name} details`}>i</button>
                     {!!dataset.metricDefinitions?.length && <button className={compareIds.includes(entity.id) ? "compare active" : "compare"} onClick={() => toggleCompare(entity.id)} aria-label={`Compare ${entity.name}`} title={`Compare ${entity.name}`}>⇄</button>}
                     <button className="add-candidate" disabled={history.present.length >= template.maxLength} onClick={() => commit(insertEntity(history.present, entity.id, history.present.length, template.maxLength))} aria-label={`Add ${entity.name}`}>+</button>
                   </div>
@@ -310,6 +310,8 @@ export function RankingBuilder({
           </section>
         </div>
       </section>
+
+      {detailEntity && <div className="modal-backdrop" role="presentation" onMouseDown={() => setDetailId(null)}><section className="entity-detail-modal" role="dialog" aria-modal="true" aria-labelledby="entity-detail-title" onMouseDown={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setDetailId(null)} aria-label="Close details">×</button><div className="entity-detail-heading"><TeamMark entity={detailEntity} size="large" /><div><p className="kicker">ENTITY DEEP DIVE</p><h2 id="entity-detail-title">{detailEntity.name}</h2><span>{detailEntity.entityType}</span></div></div><div className="entity-detail-grid">{Object.entries(detailEntity.attributes).filter(([, value]) => value !== null && value !== "").map(([key, value]) => <div key={key}><span>{key.replace(/([a-z])([A-Z])/g, "$1 $2")}</span><strong>{formatAttribute(value)}</strong></div>)}</div><div className="entity-detail-actions"><button className="button button-secondary" onClick={() => { toggleCompare(detailEntity.id); setDetailId(null); }}>Add to comparison</button><button className="button button-primary" disabled={history.present.includes(detailEntity.id) || history.present.length >= template.maxLength} onClick={() => { commit(insertEntity(history.present, detailEntity.id, history.present.length, template.maxLength)); setDetailId(null); }}>Add to ranking</button></div></section></div>}
 
       {publishOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setPublishOpen(false)}>

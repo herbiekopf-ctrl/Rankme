@@ -18,23 +18,6 @@ export const rankingTemplates: Record<string, RankingTemplate> = {
     publishLabel: "Publish my ballot",
     accent: "#f4b942",
   },
-  stadiums: {
-    id: "stadiums",
-    version: 1,
-    domain: "college-football",
-    entityType: "stadium",
-    title: "Best College Football Stadiums",
-    eyebrow: "Rank anything CFB",
-    description: "Build your ten-place stadium list using the exact same ranking engine as the Top 25.",
-    minLength: 10,
-    maxLength: 10,
-    exactLength: true,
-    defaultLength: 10,
-    visibleAttributes: ["team", "city", "capacity"],
-    searchPlaceholder: "Search stadium, team, or city",
-    publishLabel: "Publish stadium list",
-    accent: "#72d5c8",
-  },
 };
 
 export function getTemplate(id: string): RankingTemplate | null {

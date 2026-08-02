@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     entityCount: dataset.entities.length,
     snapshotVersion: dataset.version,
     refreshedAt: dataset.refreshedAt,
-    refreshMode: dataset.refreshMode ?? "fixture",
+    refreshMode: dataset.refreshMode ?? "saved-snapshot",
     upstreamRequestsPerRefresh: dataset.upstreamRequests ?? 0,
     stale: dataset.stale,
     warnings: dataset.warnings ?? [],

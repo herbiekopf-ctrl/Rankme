@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TeamMark } from "./TeamMark";
 import { buildCustomTemplate, customDatasetUrl, decodeCustomPollConfig } from "@/lib/domain/customPolls";
-import { seedStadiumDataset, seedTeamDataset } from "@/lib/domain/seed";
 import { getTemplate } from "@/lib/domain/templates";
 import type { DatasetEnvelope } from "@/lib/domain/types";
 import { formatAttribute } from "@/lib/utils";
@@ -22,9 +21,7 @@ export function PublishedBallot({
 }) {
   const customConfig = useMemo(() => decodeCustomPollConfig(customConfigRaw), [customConfigRaw]);
   const template = customConfig ? buildCustomTemplate(customConfig) : getTemplate(templateId) ?? getTemplate("top-25")!;
-  const [dataset, setDataset] = useState<DatasetEnvelope>(() => customConfig
-    ? { id: "custom-loading", version: "loading", source: "seed", sourceLabel: "Loading saved snapshot", refreshedAt: customConfig.createdAt, stale: false, connected: false, entities: [] }
-    : template.entityType === "stadium" ? seedStadiumDataset() : seedTeamDataset());
+  const [dataset, setDataset] = useState<DatasetEnvelope>({ id: "loading", version: "loading", source: "collegefootballdata", sourceLabel: "Loading saved data", refreshedAt: new Date(0).toISOString(), stale: false, connected: false, entities: [] });
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -35,9 +32,7 @@ export function PublishedBallot({
         .catch(() => undefined);
       return;
     }
-    const datasetUrl = template.entityType === "stadium"
-      ? "/api/college-football/rankables?year=2026&subject=stadiums"
-      : template.entityType === "team"
+    const datasetUrl = template.entityType === "team"
         ? "/api/college-football/teams?year=2026"
         : null;
     if (!datasetUrl) return;
@@ -48,10 +43,8 @@ export function PublishedBallot({
   }, [customConfig, template.entityType]);
 
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
-  const fallbackIds = dataset.entities.slice(0, template.defaultLength).map((entity) => entity.id);
-  const resolvedIds = entityIds.length ? entityIds : fallbackIds;
-  const entities = resolvedIds.map((id) => entitiesById.get(id)).filter(Boolean);
-  const sourceStatus = dataset.source === "collegefootballdata" ? "CFBD snapshot connected" : dataset.source === "seed" ? "Demo dataset" : "Saved option dataset";
+  const entities = entityIds.map((id) => entitiesById.get(id)).filter(Boolean);
+  const sourceStatus = dataset.connected ? "Saved CFBD dataset" : "Real dataset unavailable";
 
   async function share() {
     if (navigator.share) {
@@ -69,7 +62,7 @@ export function PublishedBallot({
         <div>
           <p className="kicker">PUBLISHED RECEIPTS</p>
           <h1>{template.title}</h1>
-          <p className="published-byline"><span className="avatar">H</span> Herb · @herb <span>•</span> {slug.replaceAll("-", " ")}</p>
+          <p className="published-byline">Published ranking <span>•</span> {slug.replaceAll("-", " ")}</p>
         </div>
         <div className="published-actions">
           <button className="button button-secondary" onClick={share}>{copied ? "Link copied" : "Share ballot ↗"}</button>
@@ -89,18 +82,18 @@ export function PublishedBallot({
                 <span className="public-rank">{index + 1}</span>
                 <TeamMark entity={entity} size={index < 5 ? "large" : "medium"} />
                 <div><strong>{entity.name}</strong>{template.visibleAttributes.length > 0 && <span>{template.visibleAttributes.slice(0, 2).map((key) => formatAttribute(entity.attributes[key])).join(" · ")}</span>}</div>
-                <span className="consensus-delta">{index % 4 === 1 ? "+2" : index % 4 === 3 ? "−1" : "—"}</span>
               </article>
             ))}
+            {!entities.length && <div className="real-data-empty"><strong>This ballot cannot be rendered from real data yet.</strong><span>Import the referenced season or open a valid published ballot link.</span></div>}
           </div>
-          <div className="public-card-footer"><span>Published Aug 1, 2026</span><span>Dataset snapshot · {dataset.version}</span></div>
+          <div className="public-card-footer"><span>Timestamp retained with published record</span><span>Dataset snapshot · {dataset.version}</span></div>
         </div>
 
         <aside className="ballot-insights">
           <div className="insight-card">
             <span>YOUR BIGGEST TAKE</span>
-            <strong>Not following the crowd.</strong>
-            <p>{customConfig ? "This poll uses the exact option list and order chosen by its creator." : "Your order differs from the demo national consensus in 17 of 25 positions."}</p>
+            <strong>The order is preserved.</strong>
+            <p>This page shows only the entities encoded by the ballot. Ranked does not invent a consensus comparison when real responses are unavailable.</p>
           </div>
           <div className="insight-card">
             <span>DATA RECEIPT</span>

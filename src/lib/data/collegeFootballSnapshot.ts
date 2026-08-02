@@ -75,9 +75,9 @@ async function saveSnapshot(snapshot: CollegeFootballSnapshot): Promise<boolean>
   }
 }
 
-async function loadOrRefresh(year: number): Promise<SnapshotResult> {
+async function loadOrRefresh(year: number, forceRefresh = false): Promise<SnapshotResult> {
   const saved = await readSavedSnapshot(year);
-  if (saved && Date.now() - new Date(saved.refreshedAt).getTime() < refreshMilliseconds()) {
+  if (!forceRefresh && saved && Date.now() - new Date(saved.refreshedAt).getTime() < refreshMilliseconds()) {
     return { snapshot: saved, stale: false, refreshMode: "saved-snapshot" };
   }
 
@@ -96,10 +96,10 @@ async function loadOrRefresh(year: number): Promise<SnapshotResult> {
   }
 }
 
-export function getCollegeFootballSnapshot(year: number): Promise<SnapshotResult> {
+export function getCollegeFootballSnapshot(year: number, forceRefresh = false): Promise<SnapshotResult> {
   const existing = inflight.get(year);
   if (existing) return existing;
-  const promise = loadOrRefresh(year).finally(() => inflight.delete(year));
+  const promise = loadOrRefresh(year, forceRefresh).finally(() => inflight.delete(year));
   inflight.set(year, promise);
   return promise;
 }

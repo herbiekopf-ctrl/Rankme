@@ -8,13 +8,12 @@ export function AppHeader() {
         <span>RANKED</span>
       </Link>
       <nav aria-label="Main navigation">
-        <Link href="/rank/top-25">Build</Link>
+        <Link href="/rank/top-25">Top 25</Link>
         <Link href="/create">Create a poll</Link>
-        <Link href="/consensus">Consensus</Link>
-        <Link href="/insights">Connections</Link>
+        <Link href="/consensus">Browse</Link>
         <Link href="/profile">Your perspective</Link>
       </nav>
-      <Link className="header-cta" href="/create">Make your poll</Link>
+      <Link className="header-cta" href="/rank/top-25">Vote Top 25</Link>
     </header>
   );
 }
