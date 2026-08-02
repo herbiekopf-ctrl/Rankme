@@ -1,4 +1,5 @@
 import { pullCollegeFootballSnapshot } from "../src/lib/adapters/cfbd";
+import { ensureCollegeFootballCatalog } from "../src/lib/data/ensureCollegeFootballCatalog";
 import { persistCollegeFootballSnapshot } from "../src/lib/data/supabaseSnapshot";
 
 function requestedYears(): number[] {
@@ -32,6 +33,10 @@ async function main(): Promise<void> {
   verifyEnvironment();
   const years = requestedYears();
   console.log(`Starting direct CFBD → Supabase import for ${years.join(", ")}.`);
+
+  console.log("Checking Supabase catalog before contacting CFBD...");
+  await ensureCollegeFootballCatalog();
+  console.log("Supabase catalog is ready.");
 
   for (const year of years) {
     const started = Date.now();
