@@ -32,12 +32,13 @@ export async function requirePermanentRankedUser(client: SupabaseClient<Database
   return user;
 }
 
-export async function sendRankedMagicLink(client: SupabaseClient<Database>, email: string, nextPath: string): Promise<void> {
-  const redirect = new URL("/auth/callback", window.location.origin);
-  redirect.searchParams.set("next", nextPath.startsWith("/") ? nextPath : "/");
-  const { error } = await client.auth.signInWithOtp({
-    email: email.trim(),
-    options: { emailRedirectTo: redirect.toString(), shouldCreateUser: true },
+export async function signInToRankedWithGoogle(client: SupabaseClient<Database>): Promise<void> {
+  const callback = new URL("/auth/callback", window.location.origin);
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  callback.searchParams.set("next", currentPath.startsWith("/") ? currentPath : "/");
+  const { error } = await client.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: callback.toString() },
   });
   if (error) throw error;
 }
