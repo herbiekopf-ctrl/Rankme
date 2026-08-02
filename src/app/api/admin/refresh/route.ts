@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { updateTag } from "next/cache";
+import { revalidateTag } from "next/cache";
 import { getCollegeFootballSnapshot } from "@/lib/data/collegeFootballSnapshot";
 
 export const runtime = "nodejs";
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
   const startedAt = new Date().toISOString();
   const receipts: Array<Record<string, unknown>> = [];
-  updateTag("cfbd");
+  revalidateTag("cfbd", "max");
   for (const year of years) {
     try {
       const result = await getCollegeFootballSnapshot(year, true);
