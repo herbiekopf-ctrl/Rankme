@@ -16,19 +16,25 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
-      - name: Request shared CFBD refresh
+      - name: Check out Ranked
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Import CFBD directly into Supabase
         env:
-          RANKED_APP_URL: ${{ secrets.RANKED_APP_URL }}
-          RANKED_INGEST_TOKEN: ${{ secrets.RANKED_INGEST_TOKEN }}
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           REQUESTED_YEARS: ${{ inputs.years || '[2026]' }}
-        run: |
-          test -n "$RANKED_APP_URL"
-          test -n "$RANKED_INGEST_TOKEN"
-          curl --fail-with-body --retry 2 --max-time 300 \
-            --request POST \
-            --header "Authorization: Bearer $RANKED_INGEST_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data "{\"years\":$REQUESTED_YEARS}" \
-            "$RANKED_APP_URL/api/admin/refresh"
+        run: npm run import:cfbd -- "$REQUESTED_YEARS"
