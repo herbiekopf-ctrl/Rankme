@@ -46,7 +46,7 @@ SUPABASE_SECRET_KEY=sb_secret_...
 
 The URL and publishable key identify the app to Supabase. `SUPABASE_SECRET_KEY` is server-only and must never be exposed in a `NEXT_PUBLIC_` variable, committed file, browser bundle, or chat message. The legacy `SUPABASE_SERVICE_ROLE_KEY` name is supported as a fallback.
 
-In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled. Add the local/deployed `/auth/callback` URL to **Authentication → URL Configuration → Redirect URLs** so email-link sign-in can return users to their saved draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
+In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled. Configure both the **Confirm signup** and **Magic Link** email templates to show `{{ .Token }}` instead of `{{ .ConfirmationURL }}`. Ranked verifies that one-time email code in the browser so a local draft never has to leave the page during sign-in. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
 
 Without a key, the app intentionally remains functional using frozen seed data and labels the dataset as demo data.
 

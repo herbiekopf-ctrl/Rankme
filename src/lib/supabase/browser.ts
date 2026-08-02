@@ -32,12 +32,20 @@ export async function requirePermanentRankedUser(client: SupabaseClient<Database
   return user;
 }
 
-export async function sendRankedMagicLink(client: SupabaseClient<Database>, email: string, nextPath: string): Promise<void> {
-  const redirect = new URL("/auth/callback", window.location.origin);
-  redirect.searchParams.set("next", nextPath.startsWith("/") ? nextPath : "/");
+export async function sendRankedEmailCode(client: SupabaseClient<Database>, email: string): Promise<void> {
   const { error } = await client.auth.signInWithOtp({
     email: email.trim(),
-    options: { emailRedirectTo: redirect.toString(), shouldCreateUser: true },
+    options: { shouldCreateUser: true },
   });
   if (error) throw error;
+}
+
+export async function verifyRankedEmailCode(client: SupabaseClient<Database>, email: string, token: string): Promise<void> {
+  const { data, error } = await client.auth.verifyOtp({
+    email: email.trim(),
+    token: token.trim(),
+    type: "email",
+  });
+  if (error) throw error;
+  if (!data.session) throw new Error("The code was accepted, but no sign-in session was created. Request a new code and try again.");
 }

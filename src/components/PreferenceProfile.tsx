@@ -84,7 +84,7 @@ export function PreferenceProfile() {
         ))}
       </div>
       <div className="preference-footer"><p>{status}</p><button className="button button-primary" disabled={!userId || saving} onClick={saveProfile}>{saving ? "Saving…" : "Save private profile"}</button></div>
-      {!userId && <SignInGate nextPath="/profile" />}
+      {!userId && <SignInGate />}
     </section>
   );
 }
