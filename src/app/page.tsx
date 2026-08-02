@@ -15,6 +15,7 @@ export default function HomePage() {
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/rank/top-25">Build my Top 25 <span>→</span></Link>
+            <Link className="text-link" href="/create">Create any poll</Link>
             <Link className="text-link" href="/consensus">See fan consensus</Link>
           </div>
           <div className="hero-proof">
@@ -80,12 +81,12 @@ export default function HomePage() {
             <p>Atmosphere, tradition, setting—make the list your way.</p>
             <strong>Rank 10 →</strong>
           </Link>
-          <div className="template-card template-muted">
-            <span className="template-icon">QB</span>
-            <h3>Quarterbacks</h3>
-            <p>Player templates arrive after roster data and identity are production-ready.</p>
-            <span className="soon">Coming next</span>
-          </div>
+          <Link href="/create" className="template-card">
+            <span className="template-icon">＋</span>
+            <h3>Create Your Own</h3>
+            <p>Teams, ACC schools, mascots, towns, stadiums, WRs—or paste your own options.</p>
+            <strong>Choose the list →</strong>
+          </Link>
         </div>
       </section>
     </>

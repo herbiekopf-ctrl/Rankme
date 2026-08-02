@@ -19,6 +19,14 @@ export type AttributeDefinition = {
   freshness: "live" | "hourly" | "daily" | "weekly" | "seasonal" | "manual";
 };
 
+export type MetricDefinition = {
+  key: string;
+  label: string;
+  description: string;
+  format: "integer" | "decimal" | "percentage" | "signed";
+  direction: "asc" | "desc";
+};
+
 export type RankingTemplate = {
   id: string;
   version: number;
@@ -45,7 +53,53 @@ export type DatasetEnvelope = {
   refreshedAt: string;
   stale: boolean;
   connected: boolean;
+  credentialConfigured?: boolean;
+  refreshMode?: "saved-snapshot" | "framework-cache" | "fixture";
+  upstreamRequests?: number;
+  warnings?: string[];
+  metricDefinitions?: MetricDefinition[];
   entities: RankableEntity[];
+};
+
+export type RankingSubject =
+  | "teams"
+  | "conference-teams"
+  | "mascots"
+  | "towns"
+  | "stadiums"
+  | "players"
+  | "manual";
+
+export type CustomPollConfig = {
+  id: string;
+  title: string;
+  subject: RankingSubject;
+  length: number;
+  conference?: string;
+  position?: string;
+  manualOptions?: string[];
+  createdAt: string;
+};
+
+export type PollSubjectOption = {
+  id: RankingSubject;
+  label: string;
+  description: string;
+  count: number;
+  available?: boolean;
+};
+
+export type PollCatalog = {
+  year: number;
+  connected: boolean;
+  sourceLabel: string;
+  refreshedAt: string;
+  refreshMode: DatasetEnvelope["refreshMode"];
+  upstreamRequests: number;
+  warnings?: string[];
+  conferences: string[];
+  positions: string[];
+  subjects: PollSubjectOption[];
 };
 
 export type RankingDraft = {

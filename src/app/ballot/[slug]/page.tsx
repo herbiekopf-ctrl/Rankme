@@ -12,9 +12,9 @@ export default async function BallotPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ teams?: string; template?: string }>;
+  searchParams: Promise<{ teams?: string; items?: string; template?: string; config?: string }>;
 }) {
   const { slug } = await params;
   const query = await searchParams;
-  return <PublishedBallot slug={slug} entityIds={decodeRanking(query.teams ?? null)} templateId={query.template ?? "top-25"} />;
+  return <PublishedBallot slug={slug} entityIds={decodeRanking(query.items ?? query.teams ?? null)} templateId={query.template ?? "top-25"} customConfigRaw={query.config} />;
 }

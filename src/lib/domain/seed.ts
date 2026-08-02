@@ -87,6 +87,9 @@ export function seedTeamDataset(): DatasetEnvelope {
     refreshedAt: "2026-08-01T12:00:00.000Z",
     stale: false,
     connected: false,
+    credentialConfigured: false,
+    refreshMode: "fixture",
+    upstreamRequests: 0,
     entities: seedTeams,
   };
 }
@@ -100,6 +103,9 @@ export function seedStadiumDataset(): DatasetEnvelope {
     refreshedAt: "2026-07-30T12:00:00.000Z",
     stale: false,
     connected: true,
+    credentialConfigured: false,
+    refreshMode: "fixture",
+    upstreamRequests: 0,
     entities: seedStadiums,
   };
 }

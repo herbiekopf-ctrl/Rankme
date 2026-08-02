@@ -12,21 +12,32 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import Link from "next/link";
+import { ComparisonTool } from "./ComparisonTool";
 import { SortableEntityCard } from "./SortableEntityCard";
 import { TeamMark } from "./TeamMark";
+import { encodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { encodeRanking, insertEntity, moveEntity, removeEntity, validateRanking } from "@/lib/domain/ranking";
-import type { DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
+import type { CustomPollConfig, DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
 import { entityMatches, formatAttribute, timeAgo } from "@/lib/utils";
 
 type HistoryState = { past: string[][]; present: string[]; future: string[][] };
 
-export function RankingBuilder({ template, initialDataset }: { template: RankingTemplate; initialDataset: DatasetEnvelope }) {
-  const [dataset, setDataset] = useState(initialDataset);
+export function RankingBuilder({
+  template,
+  initialDataset,
+  customConfig,
+}: {
+  template: RankingTemplate;
+  initialDataset: DatasetEnvelope;
+  customConfig?: CustomPollConfig;
+}) {
+  const dataset = initialDataset;
   const [history, setHistory] = useState<HistoryState>({ past: [], present: [], future: [] });
   const [query, setQuery] = useState("");
   const [conference, setConference] = useState("All");
   const [saveState, setSaveState] = useState<"loading" | "saving" | "saved">("loading");
   const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const hydrated = useRef(false);
@@ -37,18 +48,6 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
-  useEffect(() => {
-    if (template.entityType !== "team") return;
-    const controller = new AbortController();
-    fetch("/api/college-football/teams?year=2026", { signal: controller.signal })
-      .then((response) => response.ok ? response.json() as Promise<DatasetEnvelope> : Promise.reject(new Error("Dataset failed")))
-      .then(setDataset)
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      });
-    return () => controller.abort();
-  }, [template.entityType]);
 
   useEffect(() => {
     try {
@@ -94,9 +93,13 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
     entityMatches(entity, query) &&
     (conference === "All" || entity.attributes.conference === conference),
   );
-  const compareEntities = compareIds.map((id) => entitiesById.get(id)).filter((entity): entity is RankableEntity => Boolean(entity));
   const validationErrors = validateRanking(template, history.present);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
+  const sourceBadge = dataset.source === "collegefootballdata"
+    ? "CFBD snapshot connected"
+    : dataset.source === "seed"
+      ? dataset.credentialConfigured ? "CFBD refresh failed" : "Demo data"
+      : "Saved option list";
 
   function commit(next: string[]) {
     if (next.join("|") === history.present.join("|")) return;
@@ -125,10 +128,12 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
   }
 
   function toggleCompare(id: string) {
-    setCompareIds((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length < 3 ? [...current, id] : [...current.slice(1), id]);
+    setCompareIds((current) => current.includes(id) ? current.filter((value) => value !== id) : current.length < 4 ? [...current, id] : [...current.slice(1), id]);
+    setCompareOpen(true);
   }
 
-  const sharePath = `/ballot/preseason-2026?template=${template.id}&teams=${encodeRanking(history.present)}`;
+  const customQuery = customConfig ? `&config=${encodeCustomPollConfig(customConfig)}` : "";
+  const sharePath = `/ballot/${customConfig ? "custom-poll" : "preseason-2026"}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
   async function copyShareLink() {
     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
     setCopied(true);
@@ -139,14 +144,16 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
     <div className="builder-page">
       <section className="builder-heading shell">
         <div>
-          <Link className="back-link" href="/">← Back to home</Link>
+          <Link className="back-link" href={customConfig ? "/create" : "/"}>← {customConfig ? "Create another poll" : "Back to home"}</Link>
           <p className="kicker">{template.eyebrow}</p>
           <h1>{template.title}</h1>
           <p>{template.description}</p>
         </div>
         <div className="builder-meta">
-          <span className={dataset.connected ? "data-badge is-live" : "data-badge"}>{dataset.connected ? "Live data" : "Demo data"}</span>
-          <small>{dataset.sourceLabel} · updated {timeAgo(dataset.refreshedAt)}</small>
+          <span className={dataset.source === "collegefootballdata" ? "data-badge is-live" : "data-badge"}>{sourceBadge}</span>
+          <small>{dataset.sourceLabel} · {dataset.entities.length} options · updated {timeAgo(dataset.refreshedAt)}</small>
+          {dataset.source === "collegefootballdata" && dataset.upstreamRequests && <small>One shared snapshot · {dataset.upstreamRequests} source calls · zero per-user CFBD calls</small>}
+          {dataset.warnings?.map((warning) => <strong className="stale-warning" key={warning}>{warning}</strong>)}
           {dataset.stale && <strong className="stale-warning">Live refresh failed; showing safe fallback.</strong>}
         </div>
       </section>
@@ -155,11 +162,16 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
         <div className="builder-toolbar">
           <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : "Draft saved"}</div>
           <div className="toolbar-actions">
+            {!!dataset.metricDefinitions?.length && <button className={compareOpen ? "comparison-toggle active" : "comparison-toggle"} onClick={() => setCompareOpen((open) => !open)}>⇄ Compare teams</button>}
             <button onClick={undo} disabled={!history.past.length}>↶ Undo</button>
             <button onClick={redo} disabled={!history.future.length}>↷ Redo</button>
             <button className="publish-button" disabled={validationErrors.length > 0} onClick={() => setPublishOpen(true)}>{template.publishLabel}</button>
           </div>
         </div>
+
+        {compareOpen && !!dataset.metricDefinitions?.length && (
+          <ComparisonTool dataset={dataset} selectedIds={compareIds} onSelectedIdsChange={setCompareIds} onClose={() => setCompareOpen(false)} />
+        )}
 
         <div className="builder-grid">
           <section className="ranking-panel" aria-labelledby="your-ranking-heading">
@@ -178,6 +190,7 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
                       template={template}
                       onMove={(direction) => commit(moveEntity(history.present, entity.id, index + direction))}
                       onRemove={() => commit(removeEntity(history.present, entity.id))}
+                      onCompare={dataset.metricDefinitions?.length ? () => toggleCompare(entity.id) : undefined}
                     />
                   ))}
                   {Array.from({ length: Math.min(remaining, history.present.length ? 3 : 5) }, (_, index) => (
@@ -216,11 +229,11 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
                   <TeamMark entity={entity} />
                   <div className="candidate-identity">
                     <strong>{entity.name}</strong>
-                    <span>{formatAttribute(entity.attributes[template.visibleAttributes[0]])} · {formatAttribute(entity.attributes[template.visibleAttributes[1]])}</span>
+                    {template.visibleAttributes.length > 0 && <span>{template.visibleAttributes.slice(0, 2).map((attribute) => formatAttribute(entity.attributes[attribute])).join(" · ")}</span>}
                     {entity.attributes.suggestion && <small>{formatAttribute(entity.attributes.suggestion)}</small>}
                   </div>
                   <div className="candidate-actions">
-                    <button className={compareIds.includes(entity.id) ? "compare active" : "compare"} onClick={() => toggleCompare(entity.id)} aria-label={`Compare ${entity.name}`}>⇄</button>
+                    {!!dataset.metricDefinitions?.length && <button className={compareIds.includes(entity.id) ? "compare active" : "compare"} onClick={() => toggleCompare(entity.id)} aria-label={`Compare ${entity.name}`} title={`Compare ${entity.name}`}>⇄</button>}
                     <button className="add-candidate" disabled={history.present.length >= template.maxLength} onClick={() => commit(insertEntity(history.present, entity.id, history.present.length, template.maxLength))} aria-label={`Add ${entity.name}`}>+</button>
                   </div>
                 </article>
@@ -230,22 +243,6 @@ export function RankingBuilder({ template, initialDataset }: { template: Ranking
           </section>
         </div>
       </section>
-
-      {compareEntities.length > 0 && (
-        <aside className="compare-drawer" aria-label="Entity comparison">
-          <div className="compare-heading"><div><span>COMPARE</span><strong>{compareEntities.length} selected</strong></div><button onClick={() => setCompareIds([])}>Clear ×</button></div>
-          <div className="compare-grid" style={{ gridTemplateColumns: `110px repeat(${compareEntities.length}, minmax(120px, 1fr))` }}>
-            <span />
-            {compareEntities.map((entity) => <strong key={entity.id}>{entity.name}</strong>)}
-            {template.visibleAttributes.map((attribute) => (
-              <div className="compare-row" key={attribute}>
-                <span>{attribute.replace(/([A-Z])/g, " $1")}</span>
-                {compareEntities.map((entity) => <span key={entity.id}>{formatAttribute(entity.attributes[attribute])}</span>)}
-              </div>
-            ))}
-          </div>
-        </aside>
-      )}
 
       {publishOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setPublishOpen(false)}>

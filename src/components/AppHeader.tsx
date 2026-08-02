@@ -9,10 +9,11 @@ export function AppHeader() {
       </Link>
       <nav aria-label="Main navigation">
         <Link href="/rank/top-25">Build</Link>
+        <Link href="/create">Create a poll</Link>
         <Link href="/consensus">Consensus</Link>
         <Link href="/#explore">Explore</Link>
       </nav>
-      <Link className="header-cta" href="/rank/top-25">Make your poll</Link>
+      <Link className="header-cta" href="/create">Make your poll</Link>
     </header>
   );
 }

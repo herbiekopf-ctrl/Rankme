@@ -18,6 +18,7 @@
 next-env.d.ts
 
 # misc
+/.data/
 .DS_Store
 *.pem
 npm-debug.log*
