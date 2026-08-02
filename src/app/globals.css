@@ -490,6 +490,8 @@ a.template-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); 
 .sign-in-gate p, .sign-in-receipt p { margin: 0; color: #6d7f75; font-size: 9px; line-height: 1.5; }
 .sign-in-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
 .sign-in-form input { min-width: 0; min-height: 42px; padding: 0 11px; border: 1px solid #c6d5cb; border-radius: 6px; outline: 0; }
+.sign-in-form .sign-in-code { font-size: 18px; font-weight: 850; letter-spacing: .2em; }
+.sign-in-reset { align-self: flex-start; padding: 0; color: #367257; background: transparent; border: 0; font-size: 9px; font-weight: 850; text-decoration: underline; cursor: pointer; }
 .sign-in-receipt { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; padding: 17px; color: #233d2f; background: #edf5f0; border: 1px solid #d2e2d8; border-radius: 7px; text-align: left; }
 .candidate-sort { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-top: 9px; color: #728078; font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .candidate-sort select { min-width: 0; max-width: 210px; min-height: 32px; padding: 0 8px; border: 1px solid #d2d9d3; border-radius: 5px; color: #2c4838; background: #fff; font-size: 9px; text-transform: none; }
