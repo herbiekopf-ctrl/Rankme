@@ -15,7 +15,7 @@ Ranked is a mobile-first college football ballot builder backed by a reusable ra
 - Second "Best Stadiums" template using the same ranking canvas
 - Relational cross-poll affinity explorer and demographic cohort filtering with a hard 25-person privacy floor
 - Optional consented preference profiles using coarse region, age band, and football-experience categories
-- Open browsing and local drafts, with permanent email-link accounts required only to publish or contribute to consensus/demographics
+- Open browsing and local drafts, with Google accounts required only to publish or contribute to consensus/demographics
 - Server-only CollegeFootballData adapter with a 26-dataset shared weekly snapshot and independent optional-feed failures
 - Supabase PostgreSQL schema for entities, relationships, metrics, templates, rankings, placements, demographics, groups, aggregates, snapshots, and ingestion jobs
 - Domain, consensus, and adapter tests
@@ -46,7 +46,7 @@ SUPABASE_SECRET_KEY=sb_secret_...
 
 The URL and publishable key identify the app to Supabase. `SUPABASE_SECRET_KEY` is server-only and must never be exposed in a `NEXT_PUBLIC_` variable, committed file, browser bundle, or chat message. The legacy `SUPABASE_SERVICE_ROLE_KEY` name is supported as a fallback.
 
-In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled. Add the local/deployed `/auth/callback` URL to **Authentication → URL Configuration → Redirect URLs** so email-link sign-in can return users to their saved draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
+In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled and enable the Google provider with a Google OAuth web client. Add the app origin to the Google client's authorized JavaScript origins and use `https://<project-ref>.supabase.co/auth/v1/callback` as its authorized redirect URI. Keep the deployed `/auth/callback**` URL in Supabase's redirect allow list. Ranked returns users to the page they left, where the browser restores their local draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
 
 Without a key, the app intentionally remains functional using frozen seed data and labels the dataset as demo data.
 

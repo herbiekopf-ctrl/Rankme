@@ -328,7 +328,7 @@ export function RankingBuilder({
             {authReady && isPermanentRankedUser(rankedUser) ? <div className="publish-actions">
               <button className="button button-primary" disabled={publishing} onClick={publishRanking}>{publishing ? "Publishing…" : "Publish relational ballot"}</button>
               <button className="button button-secondary" onClick={copyShareLink}>{copied ? "Copied!" : "Copy preview link"}</button>
-            </div> : authReady ? <SignInGate nextPath={customConfig ? `/rank/custom/${customConfig.id}` : `/rank/${template.id}`} /> : <div className="sign-in-receipt"><strong>Checking your account…</strong></div>}
+            </div> : authReady ? <SignInGate /> : <div className="sign-in-receipt"><strong>Checking your account…</strong></div>}
             {publishError && <p className="creator-error" role="alert">{publishError}</p>}
           </section>
         </div>
