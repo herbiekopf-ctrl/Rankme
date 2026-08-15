@@ -16,7 +16,7 @@ Ranked is a mobile-first college football ballot builder backed by a reusable ra
 - Relational cross-poll affinity explorer and demographic cohort filtering with a hard 25-person privacy floor
 - Optional consented preference profiles using coarse region, age band, and football-experience categories
 - Open browsing and local drafts, with Google accounts required only to publish or contribute to consensus/demographics
-- Server-only CollegeFootballData adapter with a 26-dataset shared weekly snapshot and independent optional-feed failures
+- Server-only CollegeFootballData adapter with a 19-feed, approved-field weekly snapshot and independent optional-feed failures
 - Supabase PostgreSQL schema for entities, relationships, metrics, templates, rankings, placements, demographics, groups, aggregates, snapshots, and ingestion jobs
 - Domain, consensus, and adapter tests
 
@@ -54,7 +54,7 @@ After starting the app, open `/api/college-football/status?year=2025`, then repe
 
 ## Data refresh model
 
-The first server request after the weekly refresh window requests 26 CFBD datasets in parallel. The import covers teams, records, games, rosters, coaches, venues, team/player season statistics, advanced efficiency, Elo, SRS, SP, FPI, PPA, official polls, recruiting classes and recruits, talent, returning production, transfer portal entries, player usage/success, opponent-adjusted metrics, and NFL draft picks. Ranked transforms them into one coherent versioned snapshot with canonical entities, relationships, and a dynamically discovered metric catalog. Odds are intentionally excluded as rankable entities. Every ranking and comparison after that reads the shared snapshot and makes zero per-user CFBD requests.
+The first server request after the weekly refresh window requests 19 CFBD feeds in parallel. The importer uses an explicit approved-field catalog: team identity and schedule context; records and resume metrics; core offense/defense production and efficiency; Elo, SRS, SP+, FPI, polls, recruiting/talent and returning production; roster basics; venue surface, dome, capacity and construction details; games; recruiting, transfers and draft history. Granular player usage/PPA/success, recursively flattened advanced splits, expanded SRS, WEPA and raw team-stat keys are intentionally not persisted. Ranked transforms the approved data into one coherent versioned snapshot with canonical entities and relationships. Odds are excluded. Every ranking and comparison after that reads the shared snapshot and makes zero per-user CFBD requests.
 
 - Default refresh window: 7 days (`CFBD_REFRESH_SECONDS=604800`)
 - Default local snapshot: `.data/college-football-2026.json` (ignored by git)
