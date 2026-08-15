@@ -40,7 +40,7 @@ async function main(): Promise<void> {
 
   for (const year of years) {
     const started = Date.now();
-    console.log(`[${year}] Fetching 26 CFBD feeds...`);
+    console.log(`[${year}] Fetching 19 approved CFBD feeds...`);
     const snapshot = await pullCollegeFootballSnapshot(year);
     const entityCount = Object.values(snapshot)
       .filter(Array.isArray)
