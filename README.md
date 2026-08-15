@@ -46,7 +46,7 @@ SUPABASE_SECRET_KEY=sb_secret_...
 
 The URL and publishable key identify the app to Supabase. `SUPABASE_SECRET_KEY` is server-only and must never be exposed in a `NEXT_PUBLIC_` variable, committed file, browser bundle, or chat message. The legacy `SUPABASE_SERVICE_ROLE_KEY` name is supported as a fallback.
 
-In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled and enable the Google provider with a Google OAuth web client. Add the app origin to the Google client's authorized JavaScript origins and use `https://<project-ref>.supabase.co/auth/v1/callback` as its authorized redirect URI. Keep the deployed `/auth/callback**` URL in Supabase's redirect allow list. Ranked returns users to the page they left, where the browser restores their local draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
+In the Supabase dashboard, keep **Authentication → Providers → Anonymous Sign-Ins** disabled and enable the Google provider with a Google OAuth web client. Add the app origin to the Google client's authorized JavaScript origins and use `https://<project-ref>.supabase.co/auth/v1/callback` as its authorized redirect URI. Set the production Site URL to `https://ranked-wine.vercel.app` and add the exact redirect URL `https://ranked-wine.vercel.app/auth/callback`. Ranked returns users to the page they left, where the browser restores their local draft. Database functions and RLS reject anonymous publication even if a client bypasses the UI.
 
 Without a key, the app intentionally remains functional using frozen seed data and labels the dataset as demo data.
 
