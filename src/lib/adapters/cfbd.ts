@@ -145,18 +145,6 @@ const pollWeekSchema = z.object({
   week: z.number(),
   polls: z.array(z.object({ poll: z.string(), ranks: z.array(pollRankSchema) })),
 });
-const playerStatSchema = z.object({
-  season: z.number(),
-  playerId: z.string(),
-  player: z.string(),
-  position: z.string().nullable().optional(),
-  team: z.string(),
-  conference: z.string().nullable().optional(),
-  category: z.string(),
-  statType: z.string(),
-  stat: z.string(),
-});
-
 const flexibleRowSchema = z.record(z.string(), z.unknown());
 type FlexibleRow = z.infer<typeof flexibleRowSchema>;
 const flexibleRowsSchema = z.array(flexibleRowSchema);
@@ -168,7 +156,6 @@ export type CfbdRosterPlayer = z.infer<typeof rosterPlayerSchema>;
 type CfbdCoach = z.infer<typeof coachSchema>;
 type CfbdTeamStat = z.infer<typeof teamStatSchema>;
 type CfbdAdvancedSeasonStat = z.infer<typeof advancedSeasonStatSchema>;
-type CfbdPlayerStat = z.infer<typeof playerStatSchema>;
 
 export const TEAM_METRICS: MetricDefinition[] = [
   { key: "wins", label: "Wins", description: "Total wins in the selected season.", format: "integer", direction: "desc", group: "Resume", source: "CFBD records" },
@@ -180,6 +167,10 @@ export const TEAM_METRICS: MetricDefinition[] = [
   { key: "apRank", label: "AP rank", description: "Latest AP poll position in the saved snapshot.", format: "integer", direction: "asc", group: "Resume", source: "CFBD rankings" },
   { key: "elo", label: "Elo rating", description: "Opponent-adjusted Elo strength rating.", format: "integer", direction: "desc", group: "Power", source: "CFBD Elo" },
   { key: "srs", label: "SRS rating", description: "Simple Rating System strength estimate.", format: "signed", direction: "desc", group: "Power", source: "CFBD SRS" },
+  { key: "spOverall", label: "SP+ overall", description: "Opponent-adjusted overall SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
+  { key: "spOffense", label: "SP+ offense", description: "Opponent-adjusted offensive SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
+  { key: "spDefense", label: "SP+ defense", description: "Opponent-adjusted defensive SP+ rating. Lower is better.", format: "signed", direction: "asc", group: "Power", source: "CFBD SP+" },
+  { key: "fpi", label: "FPI", description: "Football Power Index team strength rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD FPI" },
   { key: "talent", label: "Team talent", description: "Roster talent composite from recruiting ratings.", format: "decimal", direction: "desc", group: "Roster", source: "CFBD talent" },
   { key: "recruitingRank", label: "Recruiting rank", description: "Team recruiting class rank for the selected year.", format: "integer", direction: "asc", group: "Roster", source: "CFBD recruiting" },
   { key: "returningProduction", label: "Returning PPA", description: "Share of prior production returning to the roster.", format: "percentage", direction: "desc", group: "Roster", source: "CFBD returning production" },
@@ -456,20 +447,16 @@ function enrichTeamEntities(
   recruiting: z.infer<typeof recruitingSchema>[],
   talent: z.infer<typeof talentSchema>[],
   returning: z.infer<typeof returningSchema>[],
-  flexibleMetricFeeds: Array<{ prefix: string; rows: FlexibleRow[] }> = [],
+  spRows: FlexibleRow[] = [],
+  fpiRows: FlexibleRow[] = [],
 ): RankableEntity[] {
   const statMap = new Map<string, Map<string, number>>();
-  const dynamicStatsByTeam = new Map<string, Record<string, number>>();
   for (const row of teamStats) {
     const value = asNumber(row.statValue);
     if (value == null) continue;
     const team = statMap.get(row.team) ?? new Map<string, number>();
     team.set(row.statName.toLowerCase().replace(/[^a-z0-9]/g, ""), value);
     statMap.set(row.team, team);
-    dynamicStatsByTeam.set(row.team, {
-      ...(dynamicStatsByTeam.get(row.team) ?? {}),
-      [`stat:team:${slug(row.statName)}`]: value,
-    });
   }
   const advancedByTeam = new Map(advancedStats.map((row) => [row.team, row]));
   const eloByTeam = new Map(elo.map((row) => [row.team, row.elo]));
@@ -480,17 +467,20 @@ function enrichTeamEntities(
   const latestPollWeek = [...polls].sort((a, b) => a.week - b.week).at(-1);
   const apPoll = latestPollWeek?.polls.find((poll) => poll.poll.toLowerCase().includes("ap"));
   const apRanks = new Map(apPoll?.ranks.map((row) => [row.school, row.rank]) ?? []);
-  const flexibleByTeam = new Map<string, Record<string, number>>();
-  for (const feed of flexibleMetricFeeds) {
-    for (const row of feed.rows) {
-      const team = pickString(row, "team", "school");
-      if (!team) continue;
-      flexibleByTeam.set(team, {
-        ...(flexibleByTeam.get(team) ?? {}),
-        ...flattenNumericValues(row, feed.prefix),
-      });
+  const ratingRows = (rows: FlexibleRow[], prefix: string) => new Map(rows.flatMap((row) => {
+    const team = pickString(row, "team", "school");
+    return team ? [[team, flattenNumericValues(row, prefix)] as const] : [];
+  }));
+  const spByTeam = ratingRows(spRows, "sp");
+  const fpiByTeam = ratingRows(fpiRows, "fpi");
+  const selected = (values: Record<string, number> | undefined, ...suffixes: string[]) => {
+    if (!values) return null;
+    for (const suffix of suffixes) {
+      const match = Object.entries(values).find(([key]) => key.toLowerCase().endsWith(suffix.toLowerCase()));
+      if (match) return match[1];
     }
-  }
+    return null;
+  };
 
   return entities.map((entity) => {
     const stats = statMap.get(entity.name);
@@ -512,13 +502,13 @@ function enrichTeamEntities(
       ...entity,
       attributes: {
         ...entity.attributes,
-        ...(dynamicStatsByTeam.get(entity.name) ?? {}),
-        ...flattenNumericValues(advanced?.offense, "advanced:offense"),
-        ...flattenNumericValues(advanced?.defense, "advanced:defense"),
-        ...(flexibleByTeam.get(entity.name) ?? {}),
         apRank: apRanks.get(entity.name) ?? null,
         elo: eloByTeam.get(entity.name) ?? null,
         srs: srsByTeam.get(entity.name) ?? null,
+        spOverall: selected(spByTeam.get(entity.name), ":rating", ":overall", ":overall:rating"),
+        spOffense: selected(spByTeam.get(entity.name), ":offense:rating", ":offense"),
+        spDefense: selected(spByTeam.get(entity.name), ":defense:rating", ":defense"),
+        fpi: selected(fpiByTeam.get(entity.name), ":fpi", ":rating"),
         talent: talentByTeam.get(entity.name) ?? null,
         recruitingRank: recruitingRow?.rank ?? null,
         recruitingPoints: recruitingRow?.points ?? null,
@@ -540,33 +530,9 @@ function enrichTeamEntities(
   });
 }
 
-function playerMetricKey(row: CfbdPlayerStat): string {
-  return `stat:${slug(row.category)}:${slug(row.statType)}`;
-}
-
-function playerMetricDefinitions(rows: CfbdPlayerStat[]): MetricDefinition[] {
-  const unique = new Map<string, MetricDefinition>();
-  for (const row of rows) {
-    const key = playerMetricKey(row);
-    if (unique.has(key)) continue;
-    unique.set(key, {
-      key,
-      label: `${row.category} · ${row.statType}`,
-      description: `${row.statType} in the ${row.category} category for the saved season.`,
-      format: "decimal",
-      direction: "desc",
-      group: "Production",
-      source: "CFBD player season stats",
-    });
-  }
-  return [...unique.values()].sort((a, b) => a.label.localeCompare(b.label));
-}
-
 export function buildPlayerEntities(
   players: CfbdRosterPlayer[],
   teams: RankableEntity[],
-  stats: CfbdPlayerStat[] = [],
-  flexibleMetricFeeds: Array<{ prefix: string; rows: FlexibleRow[] }> = [],
 ): RankableEntity[] {
   const teamsByName = new Map(teams.map((team) => [team.name, team]));
   const byId = new Map<string, RankableEntity>();
@@ -593,56 +559,6 @@ export function buildPlayerEntities(
         hometown,
       },
     });
-  }
-  for (const row of stats) {
-    const id = String(row.playerId);
-    const team = teamsByName.get(row.team);
-    const existing = byId.get(id) ?? {
-      id: `player:${id}`,
-      externalIds: { cfbd: id },
-      entityType: "player",
-      name: row.player,
-      shortName: row.position ?? undefined,
-      aliases: [row.team, row.position].filter((value): value is string => Boolean(value)),
-      imageUrl: team?.imageUrl,
-      color: team?.color ?? "#364152",
-      attributes: { team: row.team, conference: row.conference ?? team?.attributes.conference ?? "", position: row.position ?? "" },
-    } satisfies RankableEntity;
-    const value = asNumber(row.stat);
-    byId.set(id, { ...existing, attributes: { ...existing.attributes, ...(value == null ? {} : { [playerMetricKey(row)]: value }) } });
-  }
-  const idByNameAndTeam = new Map([...byId.entries()].map(([id, entity]) => [`${entity.name}|${entity.attributes.team}`, id]));
-  for (const feed of flexibleMetricFeeds) {
-    for (const row of feed.rows) {
-      const id = pickString(row, "id", "playerId", "athleteId");
-      const name = pickString(row, "name", "player");
-      const teamName = pickString(row, "team", "school");
-      const resolvedId = (id && byId.has(id) ? id : idByNameAndTeam.get(`${name}|${teamName}`)) ?? id;
-      if (!resolvedId || !name) continue;
-      const team = teamsByName.get(teamName);
-      const existing = byId.get(resolvedId) ?? {
-        id: `player:${resolvedId}`,
-        externalIds: { cfbd: resolvedId },
-        entityType: "player",
-        name,
-        shortName: pickString(row, "position") || undefined,
-        aliases: [teamName, pickString(row, "position")].filter(Boolean),
-        imageUrl: team?.imageUrl,
-        color: team?.color ?? "#364152",
-        attributes: {
-          team: teamName,
-          conference: pickString(row, "conference") || team?.attributes.conference || "",
-          position: pickString(row, "position"),
-        },
-      } satisfies RankableEntity;
-      byId.set(resolvedId, {
-        ...existing,
-        attributes: {
-          ...existing.attributes,
-          ...flattenNumericValues(row, feed.prefix),
-        },
-      });
-    }
   }
   return [...byId.values()];
 }
@@ -914,9 +830,7 @@ function buildDraftPickEntities(rows: FlexibleRow[], teams: RankableEntity[], ye
 export async function pullCollegeFootballSnapshot(year: number): Promise<CollegeFootballSnapshot> {
   const [
     teams, records, games, roster, coaches, teamStats, advanced, elo, srs, polls,
-    recruiting, talent, returning, playerStats, venues, recruits, transfers,
-    playerUsage, playerPpa, playerSuccess, sp, fpi, teamPpa, expandedSrs, adjustedTeam,
-    draftPicks,
+    recruiting, talent, returning, venues, recruits, transfers, sp, fpi, draftPicks,
   ] = await Promise.all([
     fetchCfbd("/teams/fbs", { year }, z.array(teamSchema)),
     fetchCfbd("/records", { year }, z.array(recordSchema)),
@@ -931,18 +845,11 @@ export async function pullCollegeFootballSnapshot(year: number): Promise<College
     optionalFeed("Recruiting rankings", fetchCfbd("/recruiting/teams", { year }, z.array(recruitingSchema)), [] as z.infer<typeof recruitingSchema>[]),
     optionalFeed("Team talent ratings", fetchCfbd("/talent", { year }, z.array(talentSchema)), [] as z.infer<typeof talentSchema>[]),
     optionalFeed("Returning production", fetchCfbd("/player/returning", { year }, z.array(returningSchema)), [] as z.infer<typeof returningSchema>[]),
-    optionalFeed("Player season statistics", fetchCfbd("/stats/player/season", { year, seasonType: "regular" }, z.array(playerStatSchema)), [] as CfbdPlayerStat[]),
     optionalFeed("Venue details", fetchCfbd("/venues", {}, flexibleRowsSchema), [] as FlexibleRow[]),
     optionalFeed("Individual recruits", fetchCfbd("/recruiting/players", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
     optionalFeed("Transfer portal", fetchCfbd("/player/portal", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Player usage", fetchCfbd("/player/usage", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Player PPA", fetchCfbd("/ppa/players/season", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Player success rates", fetchCfbd("/stats/player/success", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
     optionalFeed("SP ratings", fetchCfbd("/ratings/sp", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
     optionalFeed("FPI ratings", fetchCfbd("/ratings/fpi", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Team PPA", fetchCfbd("/ppa/teams", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Expanded SRS", fetchCfbd("/ratings/srs/expanded", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
-    optionalFeed("Opponent-adjusted team metrics", fetchCfbd("/wepa/team/season", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
     optionalFeed("NFL draft picks", fetchCfbd("/draft/picks", { year }, flexibleRowsSchema), [] as FlexibleRow[]),
   ]);
 
@@ -957,20 +864,11 @@ export async function pullCollegeFootballSnapshot(year: number): Promise<College
     recruiting.data,
     talent.data,
     returning.data,
-    [
-      { prefix: "sp", rows: sp.data },
-      { prefix: "fpi", rows: fpi.data },
-      { prefix: "ppa", rows: teamPpa.data },
-      { prefix: "expanded-srs", rows: expandedSrs.data },
-      { prefix: "adjusted", rows: adjustedTeam.data },
-    ],
+    sp.data,
+    fpi.data,
   );
   const derived = buildDerivedEntities(teams, teamEntities, games);
-  const playerEntities = buildPlayerEntities(roster.data, teamEntities, playerStats.data, [
-    { prefix: "usage", rows: playerUsage.data },
-    { prefix: "ppa", rows: playerPpa.data },
-    { prefix: "success", rows: playerSuccess.data },
-  ]);
+  const playerEntities = buildPlayerEntities(roster.data, teamEntities);
   const stadiumEntities = enrichStadiumEntities(derived.stadiums, venues.data);
   const recruitingClasses = buildRecruitingClassEntities(recruiting.data, teamEntities, year);
   const recruitEntities = buildRecruitEntities(recruits.data, teamEntities, year);
@@ -981,8 +879,7 @@ export async function pullCollegeFootballSnapshot(year: number): Promise<College
   const refreshedAt = new Date().toISOString();
   const warnings = [
     roster, coaches, teamStats, advanced, elo, srs, polls, recruiting, talent, returning,
-    playerStats, venues, recruits, transfers, playerUsage, playerPpa, playerSuccess, sp,
-    fpi, teamPpa, expandedSrs, adjustedTeam, draftPicks,
+    venues, recruits, transfers, sp, fpi, draftPicks,
   ].flatMap((feed) => feed.warning ? [feed.warning] : []);
   return {
     year,
@@ -991,7 +888,7 @@ export async function pullCollegeFootballSnapshot(year: number): Promise<College
     sourceLabel: "CollegeFootballData relational snapshot",
     refreshedAt,
     connected: true,
-    upstreamRequests: 26,
+    upstreamRequests: 19,
     warnings,
     teams: teamEntities,
     players: playerEntities,
@@ -1009,7 +906,7 @@ export async function pullCollegeFootballSnapshot(year: number): Promise<College
     draftPicks: draftPickEntities,
     metricsByEntityType: {
       team: mergeMetricDefinitions(TEAM_METRICS, metricDefinitionsFromEntities(teamEntities, "CFBD team metrics", "Efficiency")),
-      player: mergeMetricDefinitions(playerMetricDefinitions(playerStats.data), metricDefinitionsFromEntities(playerEntities, "CFBD player metrics", "Production")),
+      player: metricDefinitionsFromEntities(playerEntities, "CFBD roster", "Roster"),
       coach: COACH_METRICS,
       conference: CONFERENCE_METRICS,
       game: GAME_METRICS,
