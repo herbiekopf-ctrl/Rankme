@@ -35,7 +35,9 @@ export async function requirePermanentRankedUser(client: SupabaseClient<Database
 export async function signInToRankedWithGoogle(client: SupabaseClient<Database>): Promise<void> {
   const callback = new URL("/auth/callback", window.location.origin);
   const currentPath = `${window.location.pathname}${window.location.search}`;
-  callback.searchParams.set("next", currentPath.startsWith("/") ? currentPath : "/");
+  try {
+    window.sessionStorage.setItem("ranked:auth:returnTo", currentPath.startsWith("/") ? currentPath : "/create");
+  } catch {}
   const { error } = await client.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: callback.toString() },
