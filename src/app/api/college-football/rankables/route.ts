@@ -3,6 +3,7 @@ import { loadRankableDataset } from "@/lib/data/rankableDatasets";
 import { isRankingSubject, rankableCategory } from "@/lib/domain/rankableCatalog";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     const filters = Object.fromEntries([...params.entries()].filter(([key, value]) => allowedFilters.has(key) && value && value !== "All"));
     const dataset = await loadRankableDataset(year, subject, filters);
     return NextResponse.json(dataset, {
-      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+      headers: { "Cache-Control": "no-store, max-age=0" },
     });
   } catch {
     return NextResponse.json({ error: "The saved college football dataset is unavailable." }, { status: 503 });
