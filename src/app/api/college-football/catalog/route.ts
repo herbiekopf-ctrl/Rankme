@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { loadPollCatalog } from "@/lib/data/rankableDatasets";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const year = Number(new URL(request.url).searchParams.get("year") ?? 2026);
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   }
   try {
     return NextResponse.json(await loadPollCatalog(year), {
-      headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+      headers: { "Cache-Control": "no-store, max-age=0" },
     });
   } catch {
     return NextResponse.json({ error: "The saved college football dataset is unavailable." }, { status: 503 });
