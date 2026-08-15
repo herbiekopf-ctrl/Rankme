@@ -41,7 +41,7 @@ export function PollCreator() {
 
   useEffect(() => {
     let active = true;
-    fetch(`/api/college-football/catalog?year=${year}`)
+    fetch(`/api/college-football/catalog?year=${year}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<PollCatalog> : Promise.reject(new Error("Catalog unavailable")))
       .then((next) => { if (active) setCatalog(next); })
       .catch(() => { if (active) setLoadError("The saved college football catalog could not be loaded."); });
@@ -69,7 +69,7 @@ export function PollCreator() {
   useEffect(() => {
     let active = true;
     const suffix = filterQuery ? `&${filterQuery}` : "";
-    fetch(`/api/college-football/rankables?year=${year}&subject=${subject}${suffix}`)
+    fetch(`/api/college-football/rankables?year=${year}&subject=${subject}${suffix}`, { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<DatasetEnvelope> : Promise.reject(new Error("Option pool unavailable")))
       .then((dataset) => {
         if (!active) return;
