@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AnalysisPane } from "./AnalysisPane";
+import { CustomMetricBuilder } from "./CustomMetricBuilder";
 import { EntityDetailSheet } from "./EntityDetailSheet";
 import { MobileRankingTray } from "./MobileRankingTray";
 import { PublishDialog } from "./PublishDialog";
@@ -59,6 +60,7 @@ export function RankingWorkspace({
       </section>
 
       <EntityDetailSheet controller={controller} />
+      {controller.analysisMode === "metric-builder" && <CustomMetricBuilder controller={controller} />}
       <PublishDialog controller={controller} />
       {!!initialDataset.entities.length && <MobileRankingTray controller={controller} />}
     </main>
