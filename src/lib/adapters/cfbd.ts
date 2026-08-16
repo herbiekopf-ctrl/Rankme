@@ -164,19 +164,38 @@ export const TEAM_METRICS: MetricDefinition[] = [
   { key: "pointsPerGame", label: "Points per game", description: "Average points scored in completed games.", format: "decimal", direction: "desc", group: "Scoring", source: "CFBD games" },
   { key: "pointsAllowedPerGame", label: "Points allowed", description: "Average points allowed in completed games. Lower is better.", format: "decimal", direction: "asc", group: "Scoring", source: "CFBD games" },
   { key: "strengthOfSchedule", label: "Opponent win %", description: "Combined win percentage of scheduled opponents.", format: "percentage", direction: "desc", group: "Resume", source: "Derived from CFBD records" },
+  { key: "roadWins", label: "Road wins", description: "Wins in completed away games.", format: "integer", direction: "desc", group: "Resume", source: "CFBD games" },
+  { key: "recentMargin", label: "Recent form", description: "Average scoring margin over the three most recent completed games.", format: "signed", direction: "desc", group: "Resume", source: "CFBD games" },
   { key: "apRank", label: "AP rank", description: "Latest AP poll position in the saved snapshot.", format: "integer", direction: "asc", group: "Resume", source: "CFBD rankings" },
   { key: "elo", label: "Elo rating", description: "Opponent-adjusted Elo strength rating.", format: "integer", direction: "desc", group: "Power", source: "CFBD Elo" },
   { key: "srs", label: "SRS rating", description: "Simple Rating System strength estimate.", format: "signed", direction: "desc", group: "Power", source: "CFBD SRS" },
   { key: "spOverall", label: "SP+ overall", description: "Opponent-adjusted overall SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
   { key: "spOffense", label: "SP+ offense", description: "Opponent-adjusted offensive SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
   { key: "spDefense", label: "SP+ defense", description: "Opponent-adjusted defensive SP+ rating. Lower is better.", format: "signed", direction: "asc", group: "Power", source: "CFBD SP+" },
+  { key: "spSpecialTeams", label: "SP+ special teams", description: "Opponent-adjusted special-teams SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
   { key: "fpi", label: "FPI", description: "Football Power Index team strength rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD FPI" },
+  { key: "fpiOffense", label: "FPI offense", description: "FPI offensive efficiency rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD FPI" },
+  { key: "fpiDefense", label: "FPI defense", description: "FPI defensive efficiency rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD FPI" },
+  { key: "fpiSpecialTeams", label: "FPI special teams", description: "FPI special-teams efficiency rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD FPI" },
+  { key: "strengthOfRecordRank", label: "Strength of record", description: "FPI strength-of-record rank. Lower is better.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  { key: "fpiSosRank", label: "FPI SOS rank", description: "FPI strength-of-schedule rank. Lower is better.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  { key: "remainingSosRank", label: "Remaining SOS", description: "FPI remaining strength-of-schedule rank. Lower is harder.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  { key: "gameControlRank", label: "Game control", description: "FPI game-control rank. Lower is better.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
   { key: "talent", label: "Team talent", description: "Roster talent composite from recruiting ratings.", format: "decimal", direction: "desc", group: "Roster", source: "CFBD talent" },
   { key: "recruitingRank", label: "Recruiting rank", description: "Team recruiting class rank for the selected year.", format: "integer", direction: "asc", group: "Roster", source: "CFBD recruiting" },
   { key: "returningProduction", label: "Returning PPA", description: "Share of prior production returning to the roster.", format: "percentage", direction: "desc", group: "Roster", source: "CFBD returning production" },
   { key: "passingYardsPerGame", label: "Pass yards / game", description: "Net passing yards divided by games played.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
   { key: "rushingYardsPerGame", label: "Rush yards / game", description: "Rushing yards divided by games played.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
   { key: "totalYardsPerGame", label: "Total yards / game", description: "Total offense divided by games played.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
+  { key: "yardsPerPlay", label: "Yards / play", description: "Total offensive yards per rush or pass attempt.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
+  { key: "passingYardsPerAttempt", label: "Pass yards / attempt", description: "Net passing yards per pass attempt.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
+  { key: "rushingYardsPerAttempt", label: "Rush yards / attempt", description: "Rushing yards per rushing attempt.", format: "decimal", direction: "desc", group: "Production", source: "CFBD season stats" },
+  { key: "totalYardsAllowedPerGame", label: "Yards allowed / game", description: "Opponent total yards per game. Lower is better.", format: "decimal", direction: "asc", group: "Production", source: "CFBD season stats" },
+  { key: "yardsAllowedPerPlay", label: "Yards allowed / play", description: "Opponent yards per rush or pass attempt. Lower is better.", format: "decimal", direction: "asc", group: "Production", source: "CFBD season stats" },
+  { key: "thirdDownPct", label: "Third-down conversion", description: "Share of offensive third downs converted.", format: "percentage", direction: "desc", group: "Efficiency", source: "CFBD season stats" },
+  { key: "thirdDownDefensePct", label: "Third-down defense", description: "Share of opponent third downs converted. Lower is better.", format: "percentage", direction: "asc", group: "Efficiency", source: "CFBD season stats" },
+  { key: "turnoverMarginPerGame", label: "Turnover margin / game", description: "Takeaways minus giveaways per game.", format: "signed", direction: "desc", group: "Efficiency", source: "CFBD season stats" },
+  { key: "sacksPerGame", label: "Sacks / game", description: "Defensive sacks per game.", format: "decimal", direction: "desc", group: "Efficiency", source: "CFBD season stats" },
   { key: "offensiveSuccessRate", label: "Offensive success rate", description: "Share of offensive plays considered successful.", format: "percentage", direction: "desc", group: "Efficiency", source: "CFBD advanced stats" },
   { key: "defensiveSuccessRate", label: "Defensive success rate allowed", description: "Opponent successful-play rate. Lower is better.", format: "percentage", direction: "asc", group: "Efficiency", source: "CFBD advanced stats" },
   { key: "offensiveExplosiveness", label: "Offensive explosiveness", description: "Efficiency of successful offensive plays.", format: "decimal", direction: "desc", group: "Efficiency", source: "CFBD advanced stats" },
@@ -405,6 +424,12 @@ export function buildTeamEntities(teams: CfbdTeam[], records: CfbdRecord[], game
       .filter((value): value is CfbdRecord => Boolean(value));
     const opponentWins = opponentRecords.reduce((sum, value) => sum + value.total.wins + (value.total.ties ?? 0) * 0.5, 0);
     const opponentGames = opponentRecords.reduce((sum, value) => sum + (value.total.games ?? value.total.wins + value.total.losses + (value.total.ties ?? 0)), 0);
+    const roadWins = completed.filter((game) => game.awayTeam === team.school && (game.awayPoints ?? 0) > (game.homePoints ?? 0)).length;
+    const recent = completed.slice(-3);
+    const recentMargin = recent.length ? round(recent.reduce((sum, game) => {
+      const isHome = game.homeTeam === team.school;
+      return sum + ((isHome ? game.homePoints : game.awayPoints) ?? 0) - ((isHome ? game.awayPoints : game.homePoints) ?? 0);
+    }, 0) / recent.length, 1) : null;
 
     return {
       id: `team:${team.id}`,
@@ -429,6 +454,8 @@ export function buildTeamEntities(teams: CfbdTeam[], records: CfbdRecord[], game
         pointsPerGame: completed.length ? round(pointsFor / completed.length, 1) : null,
         pointsAllowedPerGame: completed.length ? round(pointsAgainst / completed.length, 1) : null,
         strengthOfSchedule: opponentGames ? round(opponentWins / opponentGames) : null,
+        roadWins,
+        recentMargin,
         lastResult: lastGame ? gameLabel(lastGame, team.school) : "No result yet",
         nextOpponent: upcoming ? gameLabel(upcoming, team.school) : "Schedule pending",
         suggestion: completed.length === 0 ? "Preseason candidate" : `${record?.total.wins ?? 0} wins · ${round((pointsFor - pointsAgainst) / completed.length, 1) >= 0 ? "+" : ""}${round((pointsFor - pointsAgainst) / completed.length, 1)} avg margin`,
@@ -498,6 +525,17 @@ function enrichTeamEntities(
     const passingYards = stat("netPassingYards", "passingYards");
     const rushingYards = stat("rushingYards");
     const totalYards = stat("totalYards", "totalOffense");
+    const passingAttempts = stat("passAttempts");
+    const rushingAttempts = stat("rushingAttempts");
+    const totalYardsAllowed = stat("totalYardsOpponent");
+    const opponentPassingAttempts = stat("passAttemptsOpponent");
+    const opponentRushingAttempts = stat("rushingAttemptsOpponent");
+    const thirdDowns = stat("thirdDowns");
+    const thirdDownConversions = stat("thirdDownConversions");
+    const opponentThirdDowns = stat("thirdDownsOpponent");
+    const opponentThirdDownConversions = stat("thirdDownConversionsOpponent");
+    const turnovers = stat("turnovers");
+    const takeaways = stat("turnoversOpponent");
     return {
       ...entity,
       attributes: {
@@ -508,7 +546,15 @@ function enrichTeamEntities(
         spOverall: selected(spByTeam.get(entity.name), ":rating", ":overall", ":overall:rating"),
         spOffense: selected(spByTeam.get(entity.name), ":offense:rating", ":offense"),
         spDefense: selected(spByTeam.get(entity.name), ":defense:rating", ":defense"),
+        spSpecialTeams: selected(spByTeam.get(entity.name), ":specialTeams:rating", ":specialTeams"),
         fpi: selected(fpiByTeam.get(entity.name), ":fpi", ":rating"),
+        fpiOffense: selected(fpiByTeam.get(entity.name), ":efficiencies:offense"),
+        fpiDefense: selected(fpiByTeam.get(entity.name), ":efficiencies:defense"),
+        fpiSpecialTeams: selected(fpiByTeam.get(entity.name), ":efficiencies:specialTeams"),
+        strengthOfRecordRank: selected(fpiByTeam.get(entity.name), ":resumeRanks:strengthOfRecord"),
+        fpiSosRank: selected(fpiByTeam.get(entity.name), ":resumeRanks:strengthOfSchedule"),
+        remainingSosRank: selected(fpiByTeam.get(entity.name), ":resumeRanks:remainingStrengthOfSchedule"),
+        gameControlRank: selected(fpiByTeam.get(entity.name), ":resumeRanks:gameControl"),
         talent: talentByTeam.get(entity.name) ?? null,
         recruitingRank: recruitingRow?.rank ?? null,
         recruitingPoints: recruitingRow?.points ?? null,
@@ -516,6 +562,15 @@ function enrichTeamEntities(
         passingYardsPerGame: gamesPlayed && passingYards != null ? round(passingYards / gamesPlayed, 1) : null,
         rushingYardsPerGame: gamesPlayed && rushingYards != null ? round(rushingYards / gamesPlayed, 1) : null,
         totalYardsPerGame: gamesPlayed && totalYards != null ? round(totalYards / gamesPlayed, 1) : null,
+        yardsPerPlay: totalYards != null && (passingAttempts ?? 0) + (rushingAttempts ?? 0) > 0 ? round(totalYards / ((passingAttempts ?? 0) + (rushingAttempts ?? 0)), 2) : null,
+        passingYardsPerAttempt: passingYards != null && passingAttempts ? round(passingYards / passingAttempts, 2) : null,
+        rushingYardsPerAttempt: rushingYards != null && rushingAttempts ? round(rushingYards / rushingAttempts, 2) : null,
+        totalYardsAllowedPerGame: gamesPlayed && totalYardsAllowed != null ? round(totalYardsAllowed / gamesPlayed, 1) : null,
+        yardsAllowedPerPlay: totalYardsAllowed != null && (opponentPassingAttempts ?? 0) + (opponentRushingAttempts ?? 0) > 0 ? round(totalYardsAllowed / ((opponentPassingAttempts ?? 0) + (opponentRushingAttempts ?? 0)), 2) : null,
+        thirdDownPct: thirdDowns && thirdDownConversions != null ? round(thirdDownConversions / thirdDowns) : null,
+        thirdDownDefensePct: opponentThirdDowns && opponentThirdDownConversions != null ? round(opponentThirdDownConversions / opponentThirdDowns) : null,
+        turnoverMarginPerGame: gamesPlayed && turnovers != null && takeaways != null ? round((takeaways - turnovers) / gamesPlayed, 2) : null,
+        sacksPerGame: gamesPlayed && stat("sacks") != null ? round((stat("sacks") ?? 0) / gamesPlayed, 1) : null,
         offensiveSuccessRate: objectNumber(advanced?.offense, "successRate", "success_rate"),
         defensiveSuccessRate: objectNumber(advanced?.defense, "successRate", "success_rate"),
         offensiveExplosiveness: objectNumber(advanced?.offense, "explosiveness"),

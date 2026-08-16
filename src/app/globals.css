@@ -919,6 +919,38 @@ a.template-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); 
 .my-metrics-table-wrap th, .my-metrics-table-wrap td { padding: 10px; border-top: 1px solid var(--line); text-align: left; }
 .my-metrics-table-wrap button { border: 0; background: transparent; cursor: pointer; font-weight: 800; margin-right: 8px; }
 .danger-link { color: #be3b3b; }
+.header-account { display: flex; align-items: center; gap: 9px; }
+.account-sign-in { border: 1px solid var(--line); border-radius: 999px; background: #fff; padding: 8px 13px; cursor: pointer; font-size: 11px; font-weight: 850; }
+.account-status { display: flex; align-items: center; gap: 7px; }
+.account-status > a { display: flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; }
+.account-status > a > span { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50%; background: var(--green); color: #fff; font-size: 11px; }
+.account-status strong { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.account-status > button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 10px; }
+.account-status.is-loading { width: 68px; height: 29px; border-radius: 999px; background: var(--surface); }
+.my-rankings-panel { grid-column: 1 / -1; border: 1px solid var(--line); border-radius: 14px; padding: 22px; margin-top: 24px; background: var(--paper); }
+.my-rankings-heading { display: flex; justify-content: space-between; gap: 18px; align-items: start; }
+.my-rankings-heading h2 { margin: 3px 0 5px; }
+.my-rankings-heading p:last-child { color: var(--muted); max-width: 680px; }
+.my-rankings-heading > span { border-radius: 999px; padding: 7px 10px; background: var(--surface); white-space: nowrap; font-size: 11px; font-weight: 850; }
+.ranking-history-list { display: grid; gap: 8px; margin-top: 17px; }
+.ranking-history-list details { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.ranking-history-list summary { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; padding: 13px; cursor: pointer; list-style: none; }
+.ranking-history-list summary::-webkit-details-marker { display: none; }
+.ranking-history-list summary > div { display: flex; align-items: center; gap: 8px; }
+.ranking-history-list time, .ranking-history-list small { color: var(--muted); font-size: 11px; }
+.history-status { border-radius: 999px; padding: 3px 6px; font-size: 8px; font-weight: 900; text-transform: uppercase; }
+.history-status.published { background: #dff3e7; color: #17623f; }
+.history-status.draft { background: #eeeae0; color: #6b6354; }
+.ranking-history-list ol { list-style: none; margin: 0; padding: 0 13px 10px; columns: 2; }
+.ranking-history-list li { display: grid; grid-template-columns: 24px 25px 1fr; align-items: center; gap: 7px; break-inside: avoid; padding: 5px 0; }
+.ranking-history-list li i { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; color: white; font-size: 7px; font-style: normal; }
+.ranking-history-list footer { border-top: 1px solid var(--line); padding: 9px 13px; color: var(--muted); font-size: 10px; }
+.custom-metric-discovery { margin: 0 0 15px; }
+.custom-metric-discovery label { display: grid; gap: 5px; max-width: 430px; font-weight: 800; }
+.custom-metric-discovery input { border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: var(--paper); }
+.custom-metric-discovery > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.custom-metric-discovery button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; background: var(--paper); cursor: pointer; }
+.custom-metric-discovery button.is-active { background: var(--ink); color: #fff; }
 @media (max-width: 700px) {
   .comparison-selection-actions span { width: 100%; margin-left: 0; }
   .heatmap-table th:first-child { min-width: 135px; }
@@ -930,4 +962,7 @@ a.template-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); 
   .analytics-card-metrics { grid-template-columns: repeat(2, 1fr); }
   .analytics-schedule li { grid-template-columns: 38px 1fr auto; }
   .analytics-schedule time { display: none; }
+  .header-account .header-cta, .account-status strong, .account-status > button { display: none; }
+  .ranking-history-list summary { grid-template-columns: 1fr; gap: 5px; }
+  .ranking-history-list ol { columns: 1; }
 }
