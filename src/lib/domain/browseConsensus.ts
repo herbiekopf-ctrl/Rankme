@@ -1,22 +1,29 @@
-export type OwnedConsensusFilter = {
-  id: string;
-  key: string;
-  value: string;
+export type ConsensusFilterSelection = {
+  categoryId: string;
+  optionId: string;
 };
 
-export function buildOwnedConsensusFilters(
-  requestedIds: string[],
-  ownedFilters: OwnedConsensusFilter[],
+export type UnlockedConsensusCategory = {
+  id: string;
+  key: string;
+  options: Array<{ id: string; value: string }>;
+};
+
+export function buildUnlockedConsensusFilters(
+  requested: ConsensusFilterSelection[],
+  unlockedCategories: UnlockedConsensusCategory[],
 ): Record<string, string> | null {
-  const ownedById = new Map(ownedFilters.map((filter) => [filter.id, filter]));
+  const categoryById = new Map(unlockedCategories.map((category) => [category.id, category]));
+  const selectedCategories = new Set<string>();
   const result: Record<string, string> = {};
 
-  for (const id of [...new Set(requestedIds)]) {
-    const filter = ownedById.get(id);
-    if (!filter) return null;
-    const existing = result[filter.key];
-    if (existing && existing !== filter.value) return null;
-    result[filter.key] = filter.value;
+  for (const selection of requested) {
+    if (selectedCategories.has(selection.categoryId)) return null;
+    selectedCategories.add(selection.categoryId);
+    const category = categoryById.get(selection.categoryId);
+    const option = category?.options.find((candidate) => candidate.id === selection.optionId);
+    if (!category || !option || result[category.key]) return null;
+    result[category.key] = option.value;
   }
 
   return result;
