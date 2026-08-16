@@ -65,7 +65,7 @@ export function PreferenceProfile() {
         conference_fan: affiliationResult.data?.find((row) => row.affiliation_type === "conference_fan")?.entity_id ?? "",
       });
       setUserId(user.id);
-      setStatus("Only aggregate patterns from consenting users are shown, and never below 25 people.");
+      setStatus("Only aggregate patterns are shown, and never below five matching voters.");
     }).catch(() => {
       if (active) setStatus("Profile setup is unavailable right now.");
     });
@@ -110,7 +110,7 @@ export function PreferenceProfile() {
 
   return (
     <section className="preference-card">
-      <div className="preference-heading"><div><p className="kicker">OPTIONAL CONTEXT</p><h2>Your ranking perspective</h2><p>Choose only what you want to share. Ranked stores coarse categories, never exact age or location.</p></div><span className="privacy-pill">25+ privacy floor</span></div>
+      <div className="preference-heading"><div><p className="kicker">OPTIONAL CONTEXT</p><h2>Your ranking perspective</h2><p>Choose only what you want to share. Ranked stores coarse categories, never exact age or location.</p></div><span className="privacy-pill">5+ privacy floor</span></div>
       <div className="preference-grid">
         <div className="affiliation-fields">
           {([{"key":"favorite","label":"Favorite team","options":teams},{"key":"conference_fan","label":"Conference affiliation","options":conferences}] as const).map(({ key, label, options }) => {

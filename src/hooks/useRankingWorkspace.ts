@@ -17,6 +17,10 @@ import type { User } from "@supabase/supabase-js";
 export type AnalysisMode = "candidates" | "compare" | "metric-builder";
 export type MobileWorkspaceMode = "ranking" | "analyze";
 
+function sameOrder(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((id, index) => id === right[index]);
+}
+
 export function useRankingWorkspace({
   template,
   initialDataset,
@@ -32,7 +36,7 @@ export function useRankingWorkspace({
   const [query, setQuery] = useState("");
   const [conference, setConference] = useState("All");
   const [candidateSort, setCandidateSort] = useState("name");
-  const [saveState, setSaveState] = useState<"loading" | "saving" | "saved" | "cloud">("loading");
+  const [saveState, setSaveState] = useState<"loading" | "saving" | "saved" | "cloud" | "unsaved">("loading");
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("candidates");
   const [mobileMode, setMobileMode] = useState<MobileWorkspaceMode>("ranking");
@@ -52,6 +56,7 @@ export function useRankingWorkspace({
   const [periodContext, setPeriodContext] = useState<RankingPeriodContext>(fallbackPeriod);
   const [periodReady, setPeriodReady] = useState(false);
   const [periodLoadError, setPeriodLoadError] = useState("");
+  const [editingPublished, setEditingPublished] = useState(false);
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusTimer = useRef<number | null>(null);
@@ -97,6 +102,7 @@ export function useRankingWorkspace({
         if (!active) return;
         const next = context ?? fallbackPeriod;
         setPeriodContext(next);
+        setEditingPublished(false);
         if (next.rankingId) {
           const available = new Set(dataset.entities.map((entity) => entity.id));
           const savedIds = next.entityIds.filter((id) => available.has(id));
@@ -176,6 +182,8 @@ export function useRankingWorkspace({
     };
   }, [dataset, effectiveConfig, history.past.length, history.present, periodContext.status, periodReady, rankedUser, storageKey, template]);
 
+  const hasPublishedChanges = editingPublished && !sameOrder(history.present, periodContext.entityIds);
+
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
   const rankedEntities = useMemo(
     () => history.present.map((id) => entitiesById.get(id)).filter((entity): entity is RankableEntity => Boolean(entity)),
@@ -215,7 +223,8 @@ export function useRankingWorkspace({
   const remaining = Math.max(0, template.defaultLength - history.present.length);
   const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
-  const canEditPeriod = periodReady && periodContext.status !== "published";
+  const canRevisePublished = periodReady && periodContext.status === "published" && periodContext.editable;
+  const canEditPeriod = periodReady && periodContext.editable && (periodContext.status !== "published" || editingPublished);
   const commit = useCallback((entityIds: string[]) => {
     if (canEditPeriod) dispatch({ type: "commit", entityIds });
   }, [canEditPeriod]);
@@ -230,6 +239,19 @@ export function useRankingWorkspace({
   }, [commit, history.present]);
   const undo = useCallback(() => { if (canEditPeriod) dispatch({ type: "undo" }); }, [canEditPeriod]);
   const redo = useCallback(() => { if (canEditPeriod) dispatch({ type: "redo" }); }, [canEditPeriod]);
+
+  const beginPublishedEdit = useCallback(() => {
+    if (!canRevisePublished) return;
+    setEditingPublished(true);
+    setPublishError("");
+  }, [canRevisePublished]);
+
+  const cancelPublishedEdit = useCallback(() => {
+    dispatch({ type: "hydrate", entityIds: periodContext.entityIds, maxLength: template.maxLength });
+    setEditingPublished(false);
+    setSaveState("cloud");
+    setPublishError("");
+  }, [periodContext.entityIds, template.maxLength]);
 
   const toggleCompare = useCallback((entityId: string) => {
     setCompareIds((current) => current.includes(entityId)
@@ -277,13 +299,20 @@ export function useRankingWorkspace({
       } else {
         rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
       }
-      await publishPersistedRanking(rankingId);
+      if (periodContext.status === "published") {
+        const savedAt = new Date().toISOString();
+        setPeriodContext((current) => ({ ...current, rankingId, status: "published", entityIds: history.present, updatedAt: savedAt, publishedAt: savedAt }));
+        setEditingPublished(false);
+        setSaveState("cloud");
+      } else {
+        await publishPersistedRanking(rankingId);
+      }
       router.push(sharePath);
     } catch (reason) {
       setPublishError(reason instanceof Error ? reason.message : "Your ranking could not be published.");
       setPublishing(false);
     }
-  }, [canEditPeriod, dataset, effectiveConfig, history.present, router, sharePath, template]);
+  }, [canEditPeriod, dataset, effectiveConfig, history.present, periodContext.status, router, sharePath, template]);
 
   return {
     template,
@@ -301,7 +330,7 @@ export function useRankingWorkspace({
     setConference,
     candidateSort,
     setCandidateSort,
-    saveState,
+    saveState: hasPublishedChanges ? "unsaved" as const : saveState,
     compareIds,
     setCompareIds,
     analysisMode,
@@ -320,6 +349,9 @@ export function useRankingWorkspace({
     periodContext,
     periodReady,
     periodLoadError,
+    editingPublished,
+    hasPublishedChanges,
+    canRevisePublished,
     isPeriodLocked: !canEditPeriod,
     sharePath,
     authReady,
@@ -334,6 +366,8 @@ export function useRankingWorkspace({
     moveRankedEntity,
     undo,
     redo,
+    beginPublishedEdit,
+    cancelPublishedEdit,
     toggleCompare,
     copyShareLink,
     publishRanking,

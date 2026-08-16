@@ -1465,3 +1465,70 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .metric-model-signals { grid-column: 4 / -1; }
   .metric-overlay .custom-metric-actions { position: static; }
 }
+
+/* Browse is a consensus surface first. */
+.browse-consensus-controls { position: relative; display: grid; grid-template-columns: minmax(210px,.7fr) minmax(0,1.3fr); gap: 20px; margin-bottom: 24px; padding: 18px; background: #f0eee6; border: 1px solid var(--line); border-radius: 12px; }
+.browse-consensus-controls h2 { margin: 2px 0 5px; font-family: Georgia, serif; font-size: 24px; font-weight: 500; }
+.browse-consensus-controls p { margin: 0; color: var(--muted); font-size: 10px; }
+.browse-filter-chips { min-width: 0; display: flex; align-content: center; align-items: center; flex-wrap: wrap; gap: 6px; }
+.browse-filter-chips > button, .browse-filter-chips > a { min-height: 38px; display: flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid #c8d0ca; border-radius: 999px; cursor: pointer; color: #395246; background: #fffdf8; font-size: 9px; font-weight: 800; text-decoration: none; }
+.browse-filter-chips > button.is-active { color: #fff; background: #1f6046; border-color: #1f6046; box-shadow: 0 4px 12px rgba(20,74,49,.15); }
+.browse-filter-chips .entity-mark { flex: 0 0 auto; }
+.browse-filter-chips button > span { display: grid; text-align: left; }
+.browse-filter-chips button small { color: #75837b; font-size: 6px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.browse-filter-chips button.is-active small { color: #bbd5c6; }
+.browse-filter-status { position: absolute; right: 16px; bottom: 5px; color: #5e7166; font-size: 8px; }
+.browse-mine { min-width: 0; }
+.browse-your-strip { display: flex; gap: 8px; overflow-x: auto; padding: 1px 1px 7px; scroll-snap-type: x proximity; }
+.browse-your-strip > a { min-width: 210px; max-width: 280px; display: grid; gap: 4px; padding: 11px 13px; color: #263e31; background: #fffdf8; border: 1px solid var(--line); border-radius: 9px; scroll-snap-align: start; text-decoration: none; }
+.browse-your-strip > a span { overflow: hidden; color: #738078; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.browse-your-strip > a strong { overflow: hidden; font-family: Georgia, serif; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.browse-your-strip > a small { color: #21704e; font-size: 8px; font-weight: 900; }
+.browse-card { min-height: 0; content-visibility: auto; contain-intrinsic-size: 410px; }
+.browse-consensus-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--line); }
+.browse-consensus-heading span { color: #24704f; font-size: 8px; font-weight: 950; letter-spacing: .12em; }
+.browse-consensus-heading strong { color: #66756c; font-size: 8px; text-align: right; }
+.browse-consensus-list { list-style: none; display: grid; gap: 4px; margin: 8px 0 0; padding: 0; }
+.browse-consensus-list li { min-height: 38px; display: grid; grid-template-columns: 24px 31px minmax(0,1fr) auto; align-items: center; gap: 7px; padding: 4px 7px; background: #f2f0e8; border-radius: 7px; }
+.browse-consensus-list li > b { color: #315d47; font-family: Georgia, serif; font-size: 13px; }
+.browse-consensus-list li > strong { min-width: 0; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.browse-consensus-list li > span { color: #748078; font-size: 7px; white-space: nowrap; }
+.browse-consensus-list.is-compact .entity-mark { width: 28px; height: 28px; }
+.browse-full-consensus { margin-top: 7px; }
+.browse-full-consensus summary { min-height: 34px; display: grid; place-items: center; cursor: pointer; color: #28694c; background: #e3ebe5; border-radius: 7px; font-size: 8px; font-weight: 900; list-style: none; }
+.browse-full-consensus summary::-webkit-details-marker { display: none; }
+.browse-full-consensus[open] summary { margin-bottom: 7px; }
+.browse-consensus-empty { min-height: 112px; display: grid; place-content: center; gap: 4px; margin-top: 8px; padding: 12px; color: #68776e; background: #f2f0e8; border: 1px dashed #c9d0ca; border-radius: 8px; text-align: center; }
+.browse-consensus-empty strong { color: #315141; font-family: Georgia, serif; font-size: 15px; font-weight: 500; }
+.browse-consensus-empty span { max-width: 280px; font-size: 8px; line-height: 1.5; }
+.browse-card footer { grid-template-columns: 1fr auto; align-items: center; }
+.browse-card footer > a { min-height: 34px; display: grid; place-items: center; padding: 0 10px; color: #fff; background: #267052; border-radius: 7px; font-size: 8px; text-decoration: none; }
+.rw-cancel-edit { min-height: 34px; padding: 0 9px; border: 1px solid #c7d0ca; border-radius: 6px; cursor: pointer; color: #456052; background: #fff; font-size: 8px; font-weight: 850; }
+
+@media (max-width: 760px) {
+  .browse-consensus-controls { grid-template-columns: 1fr; gap: 11px; margin-bottom: 18px; padding: 13px; }
+  .browse-consensus-controls h2 { font-size: 20px; }
+  .browse-filter-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .browse-filter-chips > button, .browse-filter-chips > a { min-width: max-content; min-height: 36px; }
+  .browse-filter-status { position: static; grid-column: 1 / -1; }
+  .browse-search { margin-bottom: 24px; }
+  .browse-sections { gap: 30px; }
+  .browse-section > header h2 { font-size: 25px; }
+  .browse-card { padding: 14px; }
+  .browse-card h3 { margin-top: 10px; font-size: 21px; }
+  .browse-consensus-list li { min-height: 36px; grid-template-columns: 22px 28px minmax(0,1fr) auto; gap: 5px; padding-inline: 5px; }
+  .browse-consensus-list li > span { font-size: 6px; }
+  .browse-card footer { gap: 8px; }
+  .browse-card footer > a { min-height: 38px; }
+  .rw-cancel-edit { min-height: 38px; }
+}
+
+@media (max-width: 420px) {
+  .browse-heading h1 { font-size: 38px; }
+  .browse-heading p:last-child { font-size: 12px; }
+  .browse-your-strip > a { min-width: 185px; }
+  .browse-consensus-heading { align-items: flex-start; flex-direction: column; }
+  .browse-consensus-heading strong { text-align: left; }
+  .browse-consensus-list li > span { display: none; }
+  .browse-consensus-list li { grid-template-columns: 22px 28px minmax(0,1fr); }
+}

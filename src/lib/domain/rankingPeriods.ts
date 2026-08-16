@@ -12,6 +12,7 @@ export type RankingPeriodContext = {
   cycleId: string | null;
   rankingId: string | null;
   status: RankingResponseStatus;
+  editable: boolean;
   entityIds: string[];
   createdAt: string | null;
   updatedAt: string | null;
@@ -85,6 +86,7 @@ export function localRankingPeriod(
       cycleId: null,
       rankingId: null,
       status: null,
+      editable: true,
       entityIds: [],
       createdAt: null,
       updatedAt: null,
@@ -103,6 +105,7 @@ export function localRankingPeriod(
     cycleId: null,
     rankingId: null,
     status: null,
+    editable: true,
     entityIds: [],
     createdAt: null,
     updatedAt: null,
