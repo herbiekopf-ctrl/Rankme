@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AccountStatus } from "./AccountStatus";
 
 export function AppHeader() {
   return (
@@ -13,7 +14,7 @@ export function AppHeader() {
         <Link href="/consensus">Browse</Link>
         <Link href="/profile">Your perspective</Link>
       </nav>
-      <Link className="header-cta" href="/rank/top-25">Vote Top 25</Link>
+      <div className="header-account"><Link className="header-cta" href="/rank/top-25">Vote Top 25</Link><AccountStatus /></div>
     </header>
   );
 }

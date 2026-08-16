@@ -39,11 +39,19 @@ const TEAM_OVERRIDES: Record<string, MetricOverride> = {
   offensivePointsPerOpportunity: { label: "Points / opportunity", description: "Points scored per scoring opportunity.", format: "decimal", direction: "desc", group: "Efficiency" },
   defensivePointsPerOpportunity: { label: "Points allowed / opportunity", description: "Opponent points per scoring opportunity. Lower is better.", format: "decimal", direction: "asc", group: "Efficiency" },
   defensiveHavoc: { label: "Defensive havoc", description: "Rate of disruptive defensive plays.", format: "percentage", direction: "desc", group: "Efficiency" },
+  "fpi:resumeRanks:strengthOfRecord": { label: "Strength of record", description: "FPI strength-of-record rank. Lower is better.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  "fpi:resumeRanks:strengthOfSchedule": { label: "FPI SOS rank", description: "FPI strength-of-schedule rank. Lower is harder.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  "fpi:resumeRanks:remainingStrengthOfSchedule": { label: "Remaining SOS rank", description: "FPI remaining strength-of-schedule rank. Lower is harder.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  "fpi:resumeRanks:gameControl": { label: "Game control rank", description: "FPI game-control rank. Lower is better.", format: "integer", direction: "asc", group: "Resume", source: "CFBD FPI" },
+  "fpi:efficiencies:offense": { label: "FPI offense", description: "FPI offensive efficiency rating.", format: "decimal", direction: "desc", group: "Power", source: "CFBD FPI" },
+  "fpi:efficiencies:defense": { label: "FPI defense", description: "FPI defensive efficiency rating.", format: "decimal", direction: "desc", group: "Power", source: "CFBD FPI" },
+  "fpi:efficiencies:specialTeams": { label: "FPI special teams", description: "FPI special-teams efficiency rating.", format: "decimal", direction: "desc", group: "Power", source: "CFBD FPI" },
+  "sp:specialTeams:rating": { label: "SP+ special teams", description: "Opponent-adjusted special-teams SP+ rating.", format: "signed", direction: "desc", group: "Power", source: "CFBD SP+" },
 };
 
 const ENTITY_METRIC_CATALOG: Record<string, EntityMetricCatalog> = {
   team: {
-    coreMetricKeys: ["fpi", "spOverall", "spOffense", "spDefense", "strengthOfSchedule", "talent", "recruitingRank", "apRank", "wins", "winPct", "pointsPerGame", "pointsAllowedPerGame", "returningProduction"],
+    coreMetricKeys: ["fpi", "spOverall", "strengthOfRecordRank", "fpi:resumeRanks:strengthOfRecord", "strengthOfSchedule", "fpi:resumeRanks:strengthOfSchedule", "remainingSosRank", "fpi:resumeRanks:remainingStrengthOfSchedule", "spOffense", "spDefense", "talent", "apRank", "wins", "winPct", "roadWins", "recentMargin", "pointsPerGame", "pointsAllowedPerGame", "yardsPerPlay", "yardsAllowedPerPlay", "turnoverMarginPerGame", "returningProduction"],
     overrides: TEAM_OVERRIDES,
   },
   "team-season": {
