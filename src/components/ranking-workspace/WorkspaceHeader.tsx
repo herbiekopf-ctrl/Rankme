@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 
 function saveLabel(state: RankingWorkspaceController["saveState"]) {
@@ -10,10 +11,36 @@ function saveLabel(state: RankingWorkspaceController["saveState"]) {
 }
 
 export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceController }) {
-  const { history, mobileMode, saveState, template, validationErrors } = controller;
+  const { history, mobileMode, periodContext, periodReady, saveState, template, validationErrors } = controller;
+  const periodLabel = periodContext.responseCadence === "weekly"
+    ? "THIS WEEK"
+    : periodContext.responseCadence === "seasonal"
+      ? "THIS SEASON"
+      : "THIS POLL";
+  const responseLabel = !periodReady
+    ? "Checking…"
+    : periodContext.status === "published"
+      ? "✓ Submitted"
+      : periodContext.status === "draft"
+        ? "Draft in progress"
+        : "New ranking";
 
   return (
     <header className="rw-toolbar">
+      <div className={`rw-period-strip ${periodContext.status ?? "not-started"}`}>
+        <div className="rw-period-identity">
+          <span>{periodLabel}</span>
+          <strong>{periodContext.periodTitle}</strong>
+          <small>One response per person for this period.</small>
+        </div>
+        <div className="rw-period-state">
+          <b>{responseLabel}</b>
+          {periodContext.status === "published" ? <span><Link href={controller.sharePath}>View ballot</Link><Link href="/trends">See trends</Link></span> : null}
+          {periodContext.status === "draft" ? <small>Continue the same saved list.</small> : null}
+          {!periodContext.status && periodReady ? <small>Your first save opens this period&apos;s list.</small> : null}
+        </div>
+        {controller.periodLoadError ? <small className="rw-period-warning">Saved status could not sync. Your local draft is still available.</small> : null}
+      </div>
       <div className="rw-mode-switch" aria-label="Workspace mode">
         <button
           type="button"
@@ -46,10 +73,10 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
           <button
             type="button"
             className="publish-button"
-            disabled={validationErrors.length > 0}
+            disabled={validationErrors.length > 0 || controller.isPeriodLocked}
             onClick={() => controller.setPublishOpen(true)}
           >
-            {template.publishLabel}
+            {!periodReady ? "Checking period…" : periodContext.status === "published" ? "Submitted" : template.publishLabel}
           </button>
         </div>
       </div>

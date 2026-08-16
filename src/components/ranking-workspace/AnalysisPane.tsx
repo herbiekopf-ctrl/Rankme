@@ -47,6 +47,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             selectedIds={compareIds}
             rankedIds={history.present}
             customMetrics={controller.customMetrics.metrics}
+            canRank={!controller.isPeriodLocked}
             onSelectedIdsChange={controller.setCompareIds}
             onOpenEntity={controller.setDetailId}
             onAddEntity={controller.addEntity}
@@ -115,7 +116,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                     <button
                       type="button"
                       className="add-candidate"
-                      disabled={history.present.length >= template.maxLength}
+                      disabled={controller.isPeriodLocked || history.present.length >= template.maxLength}
                       onClick={() => controller.addEntity(entity.id)}
                       aria-label={`Add ${entity.name}`}
                       title="Add to ranking"

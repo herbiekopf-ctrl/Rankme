@@ -25,12 +25,20 @@ function subjectLabel(entityType: string): string {
 
 function PollCard({ poll }: { poll: BrowsePoll }) {
   const activityAt = poll.lastResponseAt ?? poll.createdAt;
+  const action = poll.myResponseStatus === "published"
+    ? "View your submitted ranking →"
+    : poll.myResponseStatus === "draft"
+      ? "Continue your draft →"
+      : poll.responseCadence === "weekly"
+        ? "Rank this week →"
+        : "Rank this poll →";
   return <Link className="browse-card" href={browsePollHref(poll)} aria-label={`Rank ${poll.title}`}>
     <div className="browse-card-topline"><span>{poll.templateKind === "official" ? "OFFICIAL" : "COMMUNITY"}</span><time>{timeAgo(activityAt)}</time></div>
+    <div className={`browse-period-status ${poll.myResponseStatus ?? "not-started"}`}><span>{poll.periodTitle}</span><b>{poll.myResponseStatus === "published" ? "✓ Submitted" : poll.myResponseStatus === "draft" ? "Draft" : "Open"}</b></div>
     <h3>{poll.title}</h3>
     <p>{poll.description || `Choose your top ${poll.length}.`}</p>
     {poll.preview.length ? <div className="browse-poll-preview" aria-label="Latest top three">{poll.preview.slice(0, 3).map((preview) => <span key={preview.position}><b>#{preview.position}</b><TeamMark entity={previewEntity(preview, poll.entityType)} size="medium" /><strong>{preview.name}</strong></span>)}</div> : <div className="browse-poll-preview is-empty"><span>Be first to publish.</span></div>}
-    <footer><span>{subjectLabel(poll.entityType)} · Top {poll.length}</span><span>{poll.responseCount} {poll.responseCount === 1 ? "ranking" : "rankings"}</span><strong>Rank this poll →</strong></footer>
+    <footer><span>{subjectLabel(poll.entityType)} · Top {poll.length}</span><span>{poll.responseCount} {poll.responseCount === 1 ? "ranking" : "rankings"}</span><strong>{action}</strong></footer>
   </Link>;
 }
 

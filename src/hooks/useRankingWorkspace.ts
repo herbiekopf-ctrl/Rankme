@@ -6,10 +6,11 @@ import { encodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { emptyRankingHistory, rankingHistoryReducer } from "@/lib/domain/rankingHistory";
 import { encodeRanking, insertEntity, moveEntity, removeEntity, validateRanking } from "@/lib/domain/ranking";
 import type { CustomPollConfig, DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
+import { defaultResponseCadence, localRankingPeriod, type RankingPeriodContext } from "@/lib/domain/rankingPeriods";
 import { calculateCustomMetricScores } from "@/lib/domain/metrics";
 import { useCustomMetrics } from "./useCustomMetrics";
 import { entityMatches } from "@/lib/utils";
-import { persistBuiltInRankingDraft, persistCustomPoll, persistRankingDraft, publishPersistedRanking } from "@/lib/supabase/community";
+import { loadCurrentRankingPeriod, persistBuiltInRankingDraft, persistCustomPoll, persistRankingDraft, publishPersistedRanking } from "@/lib/supabase/community";
 import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 
@@ -43,6 +44,13 @@ export function useRankingWorkspace({
   const [rankedUser, setRankedUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [effectiveConfig, setEffectiveConfig] = useState(customConfig);
+  const fallbackPeriod = useMemo(
+    () => localRankingPeriod(defaultResponseCadence(template.id, effectiveConfig?.responseCadence), effectiveConfig?.year ?? 2026),
+    [effectiveConfig?.responseCadence, effectiveConfig?.year, template.id],
+  );
+  const [periodContext, setPeriodContext] = useState<RankingPeriodContext>(fallbackPeriod);
+  const [periodReady, setPeriodReady] = useState(false);
+  const [periodLoadError, setPeriodLoadError] = useState("");
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `ranked:draft:${template.id}`;
@@ -70,6 +78,51 @@ export function useRankingWorkspace({
   }, []);
 
   useEffect(() => {
+    if (!authReady) return;
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      if (!isPermanentRankedUser(rankedUser)) {
+        setPeriodContext(fallbackPeriod);
+        setPeriodLoadError("");
+        setPeriodReady(true);
+        return;
+      }
+      setPeriodReady(false);
+      setPeriodLoadError("");
+      try {
+        const context = await loadCurrentRankingPeriod(template, effectiveConfig);
+        if (!active) return;
+        const next = context ?? fallbackPeriod;
+        setPeriodContext(next);
+        if (next.rankingId) {
+          const available = new Set(dataset.entities.map((entity) => entity.id));
+          const savedIds = next.entityIds.filter((id) => available.has(id));
+          dispatch({ type: "hydrate", entityIds: savedIds, maxLength: template.maxLength });
+          const draft: RankingDraft = {
+            id: next.rankingId,
+            templateId: template.id,
+            templateVersion: template.version,
+            datasetVersion: dataset.version,
+            revision: 0,
+            entityIds: savedIds,
+            updatedAt: next.updatedAt ?? new Date().toISOString(),
+          };
+          window.localStorage.setItem(storageKey, JSON.stringify(draft));
+          setSaveState("cloud");
+        }
+      } catch (reason) {
+        if (!active) return;
+        setPeriodContext(fallbackPeriod);
+        setPeriodLoadError(reason instanceof Error ? reason.message : "Saved period status is unavailable.");
+      } finally {
+        if (active) setPeriodReady(true);
+      }
+    });
+    return () => { active = false; };
+  }, [authReady, dataset.entities, dataset.version, effectiveConfig, fallbackPeriod, rankedUser, storageKey, template]);
+
+  useEffect(() => {
     try {
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
@@ -85,7 +138,7 @@ export function useRankingWorkspace({
   }, [storageKey, template.id, template.maxLength]);
 
   useEffect(() => {
-    if (!hydrated.current) return;
+    if (!hydrated.current || !periodReady || periodContext.status === "published") return;
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
@@ -107,9 +160,11 @@ export function useRankingWorkspace({
             setEffectiveConfig(remoteConfig);
             window.localStorage.setItem(`ranked:custom-poll:${remoteConfig.id}`, JSON.stringify(remoteConfig));
           }
-          await persistRankingDraft(remoteConfig, dataset, history.present);
+          const rankingId = await persistRankingDraft(remoteConfig, dataset, history.present);
+          setPeriodContext((current) => ({ ...current, rankingId, status: "draft", entityIds: history.present, updatedAt: new Date().toISOString() }));
         } else {
-          await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
+          const rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
+          setPeriodContext((current) => ({ ...current, rankingId, status: "draft", entityIds: history.present, updatedAt: new Date().toISOString() }));
         }
       };
       void syncCloud().then(() => setSaveState("cloud")).catch(() => setSaveState("saved"));
@@ -117,7 +172,7 @@ export function useRankingWorkspace({
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [dataset, effectiveConfig, history.past.length, history.present, rankedUser, storageKey, template]);
+  }, [dataset, effectiveConfig, history.past.length, history.present, periodContext.status, periodReady, rankedUser, storageKey, template]);
 
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
   const rankedEntities = useMemo(
@@ -158,7 +213,10 @@ export function useRankingWorkspace({
   const remaining = Math.max(0, template.defaultLength - history.present.length);
   const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
-  const commit = useCallback((entityIds: string[]) => dispatch({ type: "commit", entityIds }), []);
+  const canEditPeriod = periodReady && periodContext.status !== "published";
+  const commit = useCallback((entityIds: string[]) => {
+    if (canEditPeriod) dispatch({ type: "commit", entityIds });
+  }, [canEditPeriod]);
   const addEntity = useCallback((entityId: string, position = history.present.length) => {
     commit(insertEntity(history.present, entityId, position, template.maxLength));
   }, [commit, history.present, template.maxLength]);
@@ -168,8 +226,8 @@ export function useRankingWorkspace({
   const moveRankedEntity = useCallback((entityId: string, toIndex: number) => {
     commit(moveEntity(history.present, entityId, toIndex));
   }, [commit, history.present]);
-  const undo = useCallback(() => dispatch({ type: "undo" }), []);
-  const redo = useCallback(() => dispatch({ type: "redo" }), []);
+  const undo = useCallback(() => { if (canEditPeriod) dispatch({ type: "undo" }); }, [canEditPeriod]);
+  const redo = useCallback(() => { if (canEditPeriod) dispatch({ type: "redo" }); }, [canEditPeriod]);
 
   const toggleCompare = useCallback((entityId: string) => {
     setCompareIds((current) => current.includes(entityId)
@@ -189,6 +247,7 @@ export function useRankingWorkspace({
   }, [sharePath]);
 
   const publishRanking = useCallback(async () => {
+    if (!canEditPeriod) return;
     setPublishing(true);
     setPublishError("");
     try {
@@ -207,7 +266,7 @@ export function useRankingWorkspace({
       setPublishError(reason instanceof Error ? reason.message : "The relational ballot could not be published.");
       setPublishing(false);
     }
-  }, [dataset, effectiveConfig, history.present, router, sharePath, template]);
+  }, [canEditPeriod, dataset, effectiveConfig, history.present, router, sharePath, template]);
 
   return {
     template,
@@ -239,6 +298,11 @@ export function useRankingWorkspace({
     copied,
     publishError,
     publishing,
+    periodContext,
+    periodReady,
+    periodLoadError,
+    isPeriodLocked: !canEditPeriod,
+    sharePath,
     authReady,
     canPublishRelational: isPermanentRankedUser(rankedUser),
     rankedUser,

@@ -13,6 +13,9 @@ function poll(overrides: Partial<BrowsePoll>): BrowsePoll {
     createdAt: "2026-08-01T00:00:00.000Z",
     lastResponseAt: null,
     responseCount: 0,
+    responseCadence: "once",
+    periodTitle: "One-time poll",
+    myResponseStatus: null,
     preview: [],
     ...overrides,
   };
