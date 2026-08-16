@@ -35,6 +35,15 @@ Phase 4 refines the existing unified ranking workspace around a phone-first deci
 - Team detail schedule lookup now resolves the published version by season and excludes games outside that version.
 - Consumer-facing copy removes storage, database, and internal architecture terminology.
 
+## Core consensus and revision follow-up
+
+- Browse now treats current-period consensus as the primary content instead of previewing the latest individual ballot.
+- Every poll reports its exact distinct-voter total for the active period. A revision updates that person's existing vote and never increments the voter count.
+- Signed-in users can filter consensus with only the team, conference, and demographic choices saved on their own profile.
+- Overall consensus is visible from the first vote. Demographic slices keep a five-matching-voter privacy floor and hide both the slice size and positions below that floor.
+- Browse includes a compact `Your rankings` strip, while every consensus card exposes its top three and an inline full-order expansion.
+- A submitted ranking can be reopened and revised while its response period remains open. Saving the update atomically replaces the active order and appends the previous published order to the user's private ranking event history.
+
 ## Data checks
 
 - Active catalog: 138 teams and 11 conferences.
@@ -42,11 +51,13 @@ Phase 4 refines the existing unified ranking workspace around a phone-first deci
 - Published 2026 version: 888 game entities with saved values.
 - A live team relationship check returned 12 current-season games for the sampled team.
 - Existing row-level policies keep individual affiliations private while allowing future privacy-cleared aggregate analysis.
+- The live consensus query returned an exact voter total and non-empty consensus for all eight current poll periods with published responses.
+- A rolled-back authenticated revision test confirmed that published status is preserved, revision increments once, and a private revision snapshot is appended.
 
 ## Verification
 
 - ESLint: passed with zero warnings.
-- Vitest: 42 tests passed across 16 files.
+- Vitest: 45 tests passed across 17 files.
 - Production webpack compilation: passed.
 - Source type checking reaches only the runner's missing `@playwright/test` package; the dependency is already pinned in `package.json` and the lockfile.
 - Playwright coverage now includes 390 px Live Model density and stacked heat-map comparison. Local browser execution remains blocked because this runner does not contain the declared Playwright package or a browser binary.
@@ -54,4 +65,4 @@ Phase 4 refines the existing unified ranking workspace around a phone-first deci
 
 ## Architecture boundary
 
-No new ranking page, metric engine, persistence system, or database migration was introduced. The classic workspace remains an explicit rollback path, and the unified workspace remains the default.
+No new ranking page, metric engine, or persistence system was introduced. One migration extends the existing period, event-log, and RLS architecture for current-period consensus and safe published revisions. The classic workspace remains an explicit rollback path, and the unified workspace remains the default.

@@ -1384,6 +1384,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_browse_poll_consensus: {
+        Args: {
+          p_filters?: Json
+          p_min_cohort?: number
+          p_targets: Json
+        }
+        Returns: Json
+      }
       get_ranking_affinity: {
         Args: {
           p_anchor_cycle_id: string

@@ -7,6 +7,7 @@ function saveLabel(state: RankingWorkspaceController["saveState"]) {
   if (state === "loading") return "Opening draft";
   if (state === "saving") return "Saving";
   if (state === "cloud") return "Saved to your account";
+  if (state === "unsaved") return "Update not saved";
   return "Local draft saved";
 }
 
@@ -20,7 +21,7 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
   const responseLabel = !periodReady
     ? "Checking…"
     : periodContext.status === "published"
-      ? "✓ Submitted"
+      ? controller.editingPublished ? "Editing your vote" : "✓ Submitted"
       : periodContext.status === "draft"
         ? "Draft in progress"
         : "New ranking";
@@ -31,11 +32,12 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
         <div className="rw-period-identity">
           <span>{periodLabel}</span>
           <strong>{periodContext.periodTitle}</strong>
-          <small>One response per person for this period.</small>
+          <small>One vote per person. Revise it while this period is open.</small>
         </div>
         <div className="rw-period-state">
           <b>{responseLabel}</b>
-          {periodContext.status === "published" ? <span><Link href={controller.sharePath}>View ballot</Link><Link href="/trends">See trends</Link></span> : null}
+          {periodContext.status === "published" && !controller.editingPublished ? <span><Link href={controller.sharePath}>View ballot</Link><Link href="/trends">See trends</Link></span> : null}
+          {controller.editingPublished ? <small>Your previous order stays in private revision history.</small> : null}
           {periodContext.status === "draft" ? <small>Continue the same saved list.</small> : null}
           {!periodContext.status && periodReady ? <small>Your first save opens this period&apos;s list.</small> : null}
         </div>
@@ -70,13 +72,25 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
         <div className="rw-history-actions">
           <button type="button" onClick={controller.undo} disabled={!history.past.length} aria-label="Undo last ranking change">↶ <span>Undo</span></button>
           <button type="button" onClick={controller.redo} disabled={!history.future.length} aria-label="Redo last ranking change">↷ <span>Redo</span></button>
+          {controller.editingPublished ? <button type="button" className="rw-cancel-edit" onClick={controller.cancelPublishedEdit}>Cancel</button> : null}
           <button
             type="button"
             className="publish-button"
-            disabled={validationErrors.length > 0 || controller.isPeriodLocked}
-            onClick={() => controller.setPublishOpen(true)}
+            disabled={!periodReady || (periodContext.status === "published"
+              ? controller.editingPublished
+                ? validationErrors.length > 0 || !controller.hasPublishedChanges
+                : !controller.canRevisePublished
+              : validationErrors.length > 0 || controller.isPeriodLocked)}
+            onClick={() => {
+              if (periodContext.status === "published" && !controller.editingPublished) controller.beginPublishedEdit();
+              else controller.setPublishOpen(true);
+            }}
           >
-            {!periodReady ? "Checking period…" : periodContext.status === "published" ? "Submitted" : template.publishLabel}
+            {!periodReady
+              ? "Checking period…"
+              : periodContext.status === "published"
+                ? controller.editingPublished ? "Save update" : periodContext.editable ? "Edit ranking" : "Period closed"
+                : template.publishLabel}
           </button>
         </div>
       </div>

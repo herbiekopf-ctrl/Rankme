@@ -39,6 +39,7 @@ function parseRankingPeriod(value: unknown): RankingPeriodContext {
     cycleId: typeof row.cycleId === "string" ? row.cycleId : null,
     rankingId: typeof row.rankingId === "string" ? row.rankingId : null,
     status: row.status,
+    editable: typeof row.editable === "boolean" ? row.editable : true,
     entityIds: Array.isArray(row.entityIds) ? row.entityIds.filter((id): id is string => typeof id === "string") : [],
     createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : null,
