@@ -28,6 +28,14 @@ export type MetricDefinition = {
   direction: "asc" | "desc";
   group?: "Resume" | "Scoring" | "Production" | "Efficiency" | "Power" | "Roster" | "History" | "Physical" | "Other";
   source?: string;
+  tier?: "core" | "advanced";
+  entityType?: string;
+  populatedEntityCount?: number;
+  eligibleEntityCount?: number;
+  coverage?: number;
+  distinctValueCount?: number;
+  available?: boolean;
+  comparative?: boolean;
 };
 
 export type RankingTemplate = {

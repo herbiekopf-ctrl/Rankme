@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CollegeFootballSnapshot } from "@/lib/adapters/cfbd";
 import { RANKABLE_CATEGORIES, rankableCategory } from "@/lib/domain/rankableCatalog";
+import { curateMetricDefinitions } from "@/lib/domain/metricCatalog";
 import type { DatasetEnvelope, PollCatalog, RankableEntity, RankingSubject } from "@/lib/domain/types";
 import { loadSupabaseCatalogReceipt, loadSupabaseRankableDataset } from "@/lib/data/supabaseRankables";
 
@@ -69,7 +70,14 @@ export async function loadRankableDataset(
 ): Promise<DatasetEnvelope> {
   try {
     const relational = await loadSupabaseRankableDataset(year, subject);
-    if (relational?.entities.length) return { ...relational, entities: relational.entities.filter((entity) => matchesFilters(entity, filters)) };
+    if (relational?.entities.length) {
+      const entities = relational.entities.filter((entity) => matchesFilters(entity, filters));
+      return {
+        ...relational,
+        entities,
+        metricDefinitions: curateMetricDefinitions(rankableCategory(subject).entityType, relational.metricDefinitions ?? [], entities),
+      };
+    }
   } catch {}
   return emptyDataset(year, subject, `Real ${rankableCategory(subject).label.toLocaleLowerCase()} data has not been imported for ${year}.`);
 }
@@ -90,7 +98,7 @@ export async function loadPollCatalog(year: number): Promise<PollCatalog> {
         conferences: [],
         positions: [],
         subjects: RANKABLE_CATEGORIES.map((category) => {
-          const receipt = relational.categories.get(category.entityType) ?? { count: 0, metricCount: 0 };
+          const receipt = relational.categories.get(category.entityType) ?? { count: 0, metricCount: 0, populatedMetricCount: 0 };
           return {
             id: category.id,
             entityType: category.entityType,

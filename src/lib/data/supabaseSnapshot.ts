@@ -54,7 +54,9 @@ function allSnapshotEntities(snapshot: CollegeFootballSnapshot): RankableEntity[
 }
 
 function metricMap(snapshot: CollegeFootballSnapshot): Map<string, MetricDefinition> {
-  return new Map(Object.values(snapshot.metricsByEntityType).flat().map((metric) => [metric.key, metric]));
+  return new Map(Object.entries(snapshot.metricsByEntityType).flatMap(([entityType, metrics]) =>
+    metrics.map((metric) => [`${entityType}:${metric.key}`, metric]),
+  ));
 }
 
 export async function persistCollegeFootballSnapshot(snapshot: CollegeFootballSnapshot): Promise<SnapshotPersistenceResult> {
@@ -156,7 +158,7 @@ export async function persistCollegeFootballSnapshot(snapshot: CollegeFootballSn
       return Object.entries(entity.externalIds ?? {}).map(([sourceSlug, externalId]) => ({ entity_id: stored.id, source_slug: sourceSlug, external_id: externalId }));
     });
     for (const batch of chunks(externalIdRows)) {
-      const { error } = await client.from("entity_external_ids").upsert(batch, { onConflict: "source_slug,external_id" });
+      const { error } = await client.from("entity_external_ids").upsert(batch, { onConflict: "entity_id,source_slug" });
       if (error) throw error;
     }
 
@@ -167,7 +169,7 @@ export async function persistCollegeFootballSnapshot(snapshot: CollegeFootballSn
       if (!typeId) continue;
       for (const [key, value] of Object.entries(entity.attributes)) {
         if (value == null) continue;
-        const metric = metrics.get(key);
+        const metric = metrics.get(`${entity.entityType}:${key}`);
         definitionRowsByKey.set(`${typeId}:${key}`, {
           entity_type_id: typeId,
           source_id: source.id,
