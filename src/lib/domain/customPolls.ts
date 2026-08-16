@@ -11,13 +11,18 @@ export function customPollVisibleAttributes(subject: CustomPollConfig["subject"]
 
 export function buildCustomTemplate(config: CustomPollConfig): RankingTemplate {
   const category = rankableCategory(config.subject);
+  const cadenceLabel = config.responseCadence === "weekly"
+    ? "Weekly community poll"
+    : config.responseCadence === "seasonal"
+      ? "Season poll"
+      : "Community question";
   return {
     id: `custom-${config.id}`,
     version: 1,
     domain: "college-football",
     entityType: config.entityType,
     title: config.title,
-    eyebrow: `${config.year} · Community question`,
+    eyebrow: `${config.year} · ${cadenceLabel}`,
     description: config.description?.trim() || `Rank ${config.length} ${category.label.toLocaleLowerCase()} in the order you believe is right. Every option comes from Ranked's saved data catalog.`,
     minLength: config.length,
     maxLength: config.length,
@@ -61,9 +66,13 @@ export function decodeCustomPollConfig(raw: string | undefined): CustomPollConfi
       || Array.isArray(value.filters)
     ) return null;
     const category = rankableCategory(value.subject);
+    const responseCadence = value.responseCadence === "weekly" || value.responseCadence === "seasonal"
+      ? value.responseCadence
+      : "once";
     return {
       ...value,
       entityType: category.entityType,
+      responseCadence,
       filters: Object.fromEntries(Object.entries(value.filters).filter((entry): entry is [string, string] => typeof entry[1] === "string")),
     } as CustomPollConfig;
   } catch {

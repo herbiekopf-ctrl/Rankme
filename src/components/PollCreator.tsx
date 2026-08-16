@@ -33,6 +33,7 @@ export function PollCreator() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<NonNullable<CustomPollConfig["visibility"]>>("public");
+  const [responseCadence, setResponseCadence] = useState<NonNullable<CustomPollConfig["responseCadence"]>>("once");
   const [platformStatus, setPlatformStatus] = useState<PlatformStatus | null>(null);
   const [preview, setPreview] = useState<DatasetEnvelope | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -121,6 +122,7 @@ export function PollCreator() {
       description: description.trim() || undefined,
       visibility,
       rankingMethod: "manual",
+      responseCadence,
       createdAt: new Date().toISOString(),
     };
     saveLocalPoll(config);
@@ -153,16 +155,18 @@ export function PollCreator() {
           {availableFilters.map((filter) => <label className="creator-field" key={filter.key}><span>{filter.label} (optional)</span><select value={filters[filter.key] ?? "All"} onChange={(event) => { setPreviewState("loading"); setFilters((current) => ({ ...current, [filter.key]: event.target.value })); }}><option value="All">All {filter.label.toLocaleLowerCase()}</option>{filter.values.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>)}
           <label className="creator-field"><span>How many items should each person rank?</span><input type="number" min={2} max={Math.min(50, Math.max(2, optionCount))} value={length} onChange={(event) => setLength(Number(event.target.value))} /></label>
           <label className="creator-field"><span>Visibility</span><select value={visibility} onChange={(event) => setVisibility(event.target.value as typeof visibility)}><option value="public">Public · included in consensus</option><option value="unlisted">Unlisted · link only</option><option value="private">Private draft</option></select></label>
+          <label className="creator-field"><span>How often can each person respond?</span><select value={responseCadence} onChange={(event) => setResponseCadence(event.target.value as typeof responseCadence)}><option value="once">Once · one final list</option><option value="weekly">Weekly · one list each week</option><option value="seasonal">Season · one list this season</option></select></label>
         </div>
 
         <div className={`poll-slip-receipt ${previewState}`}>
           <div><span>REAL OPTIONS</span><strong>{previewState === "loading" ? "Loading…" : optionCount.toLocaleString()}</strong></div>
           <div><span>METRICS</span><strong>{previewState === "loading" ? "Loading…" : metricCount.toLocaleString()}</strong></div>
           <div><span>FORMAT</span><strong>Top {length || 0} {selectedSubject?.label.toLocaleLowerCase() ?? "items"}</strong></div>
+          <div><span>RESPONSES</span><strong>{responseCadence === "weekly" ? "One each week" : responseCadence === "seasonal" ? "One this season" : "One per person"}</strong></div>
           <button className="button button-primary" onClick={createPoll}>Open ranking workspace →</button>
         </div>
         {!catalog?.connected && <p className="real-data-empty">No poll can be created until the protected CFBD import loads real options into Supabase. Fake options are never substituted.</p>}
-        <p className="creator-guardrail">You can build locally without an account. Publishing and contributing to consensus require sign-in. Every response is timestamped and assigned to its season/week period.</p>
+        <p className="creator-guardrail">You can build locally without an account. Publishing requires sign-in. Ranked keeps one response per person for the period you choose.</p>
         {error && <p className="creator-error" role="alert">{error}</p>}
       </section>
     </div>

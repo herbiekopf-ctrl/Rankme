@@ -4,12 +4,47 @@ import type { Json } from "./database.types";
 import { getBrowserSupabaseClient, requirePermanentRankedUser } from "./browser";
 import { customPollEntityType } from "@/lib/domain/customPolls";
 import type { CustomPollConfig, DatasetEnvelope, RankingTemplate } from "@/lib/domain/types";
+import type { RankingPeriodContext, RankingResponseStatus, ResponseCadence } from "@/lib/domain/rankingPeriods";
 
 function json(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
 
 type TemplateReceipt = { templateId: string; templateVersionId: string; createdBy: string };
+
+type RelationalRankingTarget = { templateVersionId: string; datasetVersionId: string };
+
+function isResponseCadence(value: unknown): value is ResponseCadence {
+  return value === "once" || value === "weekly" || value === "seasonal";
+}
+
+function isRankingResponseStatus(value: unknown): value is RankingResponseStatus {
+  return value === null || value === "draft" || value === "published";
+}
+
+function parseRankingPeriod(value: unknown): RankingPeriodContext {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("The saved ranking period is unavailable.");
+  const row = value as Record<string, unknown>;
+  if (!isResponseCadence(row.responseCadence) || typeof row.periodSlug !== "string" || typeof row.periodTitle !== "string" || !isRankingResponseStatus(row.status)) {
+    throw new Error("The saved ranking period is invalid.");
+  }
+  return {
+    responseCadence: row.responseCadence,
+    periodSlug: row.periodSlug,
+    periodTitle: row.periodTitle,
+    season: typeof row.season === "number" ? row.season : new Date().getFullYear(),
+    week: typeof row.week === "number" ? row.week : null,
+    opensAt: typeof row.opensAt === "string" ? row.opensAt : null,
+    closesAt: typeof row.closesAt === "string" ? row.closesAt : null,
+    cycleId: typeof row.cycleId === "string" ? row.cycleId : null,
+    rankingId: typeof row.rankingId === "string" ? row.rankingId : null,
+    status: row.status,
+    entityIds: Array.isArray(row.entityIds) ? row.entityIds.filter((id): id is string => typeof id === "string") : [],
+    createdAt: typeof row.createdAt === "string" ? row.createdAt : null,
+    updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : null,
+    publishedAt: typeof row.publishedAt === "string" ? row.publishedAt : null,
+  };
+}
 
 async function lookupRelationalEntityIds(dataset: DatasetEnvelope, localIds: string[]): Promise<string[]> {
   const client = getBrowserSupabaseClient();
@@ -46,7 +81,7 @@ export async function persistCustomPoll(config: CustomPollConfig, dataset: Datas
     p_ranking_method: config.rankingMethod ?? "manual",
     p_length: config.length,
     p_eligibility_query: json({ subject: config.subject, year: config.year, filters: config.filters }),
-    p_display_config: json({ config: persistedConfig, comparisonMetricKeys: dataset.metricDefinitions?.map((metric) => metric.key) ?? [] }),
+    p_display_config: json({ responseCadence: config.responseCadence ?? "once", config: persistedConfig, comparisonMetricKeys: dataset.metricDefinitions?.map((metric) => metric.key) ?? [] }),
     p_entity_ids: entityIds,
   });
   if (error) throw error;
@@ -57,11 +92,65 @@ export async function persistCustomPoll(config: CustomPollConfig, dataset: Datas
 export async function loadPersistedCustomPoll(pollId: string): Promise<CustomPollConfig | null> {
   const client = getBrowserSupabaseClient();
   if (!client) return null;
-  const { data, error } = await client.from("ranking_template_versions").select("id, display_config").eq("template_id", pollId).eq("version", 1).maybeSingle();
+  const { data, error } = await client.from("ranking_template_versions").select("id, display_config, response_cadence").eq("template_id", pollId).eq("version", 1).maybeSingle();
   if (error) throw error;
   if (!data || typeof data.display_config !== "object" || Array.isArray(data.display_config) || data.display_config === null) return null;
   const config = (data.display_config as Record<string, Json | undefined>).config as unknown as CustomPollConfig | undefined;
-  return config ? { ...config, remoteTemplateId: pollId, remoteTemplateVersionId: data.id } : null;
+  return config ? { ...config, responseCadence: data.response_cadence as ResponseCadence, remoteTemplateId: pollId, remoteTemplateVersionId: data.id } : null;
+}
+
+async function lookupDatasetVersionId(year: number): Promise<string> {
+  const client = getBrowserSupabaseClient();
+  if (!client) throw new Error("Supabase is not connected in this browser.");
+  const { data: savedDataset, error: datasetError } = await client.from("datasets").select("id").eq("slug", "cfbd-season").single();
+  if (datasetError) throw datasetError;
+  const { data: datasetVersion, error: versionError } = await client
+    .from("dataset_versions")
+    .select("id")
+    .eq("dataset_id", savedDataset.id)
+    .eq("season", year)
+    .in("status", ["published", "superseded"])
+    .order("fetched_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (versionError) throw versionError;
+  if (!datasetVersion) throw new Error(`Import the ${year} season into Supabase before publishing this ranking.`);
+  return datasetVersion.id;
+}
+
+async function lookupBuiltInTemplateVersionId(template: RankingTemplate): Promise<string> {
+  const client = getBrowserSupabaseClient();
+  if (!client) throw new Error("Supabase is not connected in this browser.");
+  const { data: remoteTemplate, error } = await client
+    .from("ranking_templates")
+    .select("id, ranking_template_versions(id,version)")
+    .eq("slug", `official-${template.id}`)
+    .eq("status", "active")
+    .single();
+  if (error) throw error;
+  const version = [...remoteTemplate.ranking_template_versions].sort((left, right) => right.version - left.version)[0];
+  if (!version) throw new Error("The official ranking template has not been installed in Supabase.");
+  return version.id;
+}
+
+async function resolveRankingTarget(template: RankingTemplate, config?: CustomPollConfig): Promise<RelationalRankingTarget | null> {
+  const templateVersionId = config?.remoteTemplateVersionId ?? (!config ? await lookupBuiltInTemplateVersionId(template) : null);
+  if (!templateVersionId) return null;
+  return { templateVersionId, datasetVersionId: await lookupDatasetVersionId(config?.year ?? 2026) };
+}
+
+export async function loadCurrentRankingPeriod(template: RankingTemplate, config?: CustomPollConfig): Promise<RankingPeriodContext | null> {
+  const client = getBrowserSupabaseClient();
+  if (!client) return null;
+  await requirePermanentRankedUser(client);
+  const target = await resolveRankingTarget(template, config);
+  if (!target) return null;
+  const { data, error } = await client.rpc("get_my_current_ranking_response", {
+    p_template_version_id: target.templateVersionId,
+    p_dataset_version_id: target.datasetVersionId,
+  });
+  if (error) throw error;
+  return parseRankingPeriod(data);
 }
 
 export async function persistRankingDraft(config: CustomPollConfig, dataset: DatasetEnvelope, orderedIds: string[]): Promise<string> {
@@ -70,28 +159,12 @@ export async function persistRankingDraft(config: CustomPollConfig, dataset: Dat
   await requirePermanentRankedUser(client);
   const entityIds = await lookupRelationalEntityIds(dataset, orderedIds);
   if (entityIds.length !== orderedIds.length) throw new Error("Some ranked options are missing from Supabase. Refresh the season import and try again.");
-  const { data: savedDataset, error: datasetError } = await client
-    .from("datasets")
-    .select("id")
-    .eq("slug", "cfbd-season")
-    .single();
-  if (datasetError) throw datasetError;
-  const { data: datasetVersion, error: versionError } = await client
-    .from("dataset_versions")
-    .select("id")
-    .eq("dataset_id", savedDataset.id)
-    .eq("season", config.year)
-    .in("status", ["published", "superseded"])
-    .order("fetched_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (versionError) throw versionError;
-  if (!datasetVersion) throw new Error(`Import the ${config.year} season into Supabase before publishing this ranking.`);
+  const datasetVersionId = await lookupDatasetVersionId(config.year);
   const storageKey = `ranked:remote-draft:${config.remoteTemplateVersionId}`;
   const existingRankingId = window.localStorage.getItem(storageKey) ?? undefined;
   const { data, error } = await client.rpc("save_my_ranking_draft", {
     p_template_version_id: config.remoteTemplateVersionId,
-    p_dataset_version_id: datasetVersion.id,
+    p_dataset_version_id: datasetVersionId,
     p_title: config.title,
     p_note: config.description ?? "",
     p_visibility: config.visibility ?? "public",
@@ -107,34 +180,14 @@ export async function persistBuiltInRankingDraft(template: RankingTemplate, data
   const client = getBrowserSupabaseClient();
   if (!client) throw new Error("Supabase is not connected in this browser.");
   await requirePermanentRankedUser(client);
-  const { data: remoteTemplate, error: templateError } = await client
-    .from("ranking_templates")
-    .select("id, ranking_template_versions(id)")
-    .eq("slug", `official-${template.id}`)
-    .eq("status", "active")
-    .single();
-  if (templateError) throw templateError;
-  const version = remoteTemplate.ranking_template_versions[0];
-  if (!version) throw new Error("The official ranking template has not been installed in Supabase.");
+  const templateVersionId = await lookupBuiltInTemplateVersionId(template);
   const entityIds = await lookupRelationalEntityIds(dataset, orderedIds);
   if (entityIds.length !== orderedIds.length) throw new Error("Some ranked options are missing from Supabase. Refresh the season import and try again.");
-  const { data: savedDataset, error: datasetError } = await client.from("datasets").select("id").eq("slug", "cfbd-season").single();
-  if (datasetError) throw datasetError;
-  const { data: datasetVersion, error: versionError } = await client
-    .from("dataset_versions")
-    .select("id")
-    .eq("dataset_id", savedDataset.id)
-    .eq("season", year)
-    .in("status", ["published", "superseded"])
-    .order("fetched_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (versionError) throw versionError;
-  if (!datasetVersion) throw new Error(`Import the ${year} season into Supabase before publishing this ranking.`);
-  const storageKey = `ranked:remote-draft:${version.id}`;
+  const datasetVersionId = await lookupDatasetVersionId(year);
+  const storageKey = `ranked:remote-draft:${templateVersionId}`;
   const { data, error } = await client.rpc("save_my_ranking_draft", {
-    p_template_version_id: version.id,
-    p_dataset_version_id: datasetVersion.id,
+    p_template_version_id: templateVersionId,
+    p_dataset_version_id: datasetVersionId,
     p_title: template.title,
     p_note: template.description,
     p_visibility: "public",

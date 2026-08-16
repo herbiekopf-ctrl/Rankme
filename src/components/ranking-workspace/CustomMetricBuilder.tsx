@@ -72,7 +72,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
   }
 
   function addSelected() {
-    if (!selectedUnranked.length || !availableSpots) return;
+    if (controller.isPeriodLocked || !selectedUnranked.length || !availableSpots) return;
     controller.commit([
       ...controller.history.present,
       ...selectedUnranked.slice(0, availableSpots).map((entity) => entity.id),
@@ -116,7 +116,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
           <div className="metric-preview-heading"><div><p className="kicker">MODEL ORDER</p><h4>Live ranking</h4></div><span>{selectedIds.length} selected</span></div>
           <div className="metric-preview-actions">
             <button type="button" disabled={!selectedIds.length} onClick={compareSelected}>Compare</button>
-            <button type="button" disabled={!selectedUnranked.length || !availableSpots} onClick={addSelected}>+ Rank selected</button>
+            <button type="button" disabled={controller.isPeriodLocked || !selectedUnranked.length || !availableSpots} onClick={addSelected}>+ Rank selected</button>
             <button type="button" disabled={!selectedIds.length} onClick={() => setSelectedIds([])}>Clear</button>
           </div>
           <ol>{modelOrder.map((entity, index) => {
@@ -128,7 +128,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
               <TeamMark entity={entity} size="small" />
               <button type="button" className="metric-model-team" onClick={() => controller.setDetailId(entity.id)}><strong>{entity.name}</strong><small>{currentRank ? `Your #${currentRank}` : "Not ranked"}</small></button>
               <output>{scores.get(entity.id)?.toFixed(1) ?? "—"}</output>
-              {currentRank ? <button type="button" className="metric-ranked-position" onClick={() => { controller.setAnalysisMode("candidates"); controller.setMobileMode("ranking"); }}>#{currentRank}</button> : <button type="button" className="metric-rank-team" disabled={!availableSpots} onClick={() => controller.addEntity(entity.id)}>+ Rank</button>}
+              {currentRank ? <button type="button" className="metric-ranked-position" onClick={() => { controller.setAnalysisMode("candidates"); controller.setMobileMode("ranking"); }}>#{currentRank}</button> : <button type="button" className="metric-rank-team" disabled={controller.isPeriodLocked || !availableSpots} onClick={() => controller.addEntity(entity.id)}>+ Rank</button>}
             </li>;
           })}</ol>
         </div>

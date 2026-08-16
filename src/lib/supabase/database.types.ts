@@ -999,6 +999,7 @@ export type Database = {
           max_length: number
           min_length: number
           ranking_method: string
+          response_cadence: string
           template_id: string
           version: number
         }
@@ -1015,6 +1016,7 @@ export type Database = {
           max_length: number
           min_length: number
           ranking_method?: string
+          response_cadence?: string
           template_id: string
           version: number
         }
@@ -1031,6 +1033,7 @@ export type Database = {
           max_length?: number
           min_length?: number
           ranking_method?: string
+          response_cadence?: string
           template_id?: string
           version?: number
         }
@@ -1363,6 +1366,13 @@ export type Database = {
       }
       get_rankable_dataset: {
         Args: { p_entity_type_slug: string; p_season: number }
+        Returns: Json
+      }
+      get_my_current_ranking_response: {
+        Args: {
+          p_dataset_version_id: string
+          p_template_version_id: string
+        }
         Returns: Json
       }
       get_cohort_consensus: {

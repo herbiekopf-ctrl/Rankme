@@ -149,6 +149,7 @@ export type CustomPollConfig = {
   description?: string;
   visibility?: "public" | "unlisted" | "private";
   rankingMethod?: "manual" | "pairwise" | "scoring" | "tier";
+  responseCadence?: "once" | "weekly" | "seasonal";
   remoteTemplateId?: string;
   remoteTemplateVersionId?: string;
   createdAt: string;

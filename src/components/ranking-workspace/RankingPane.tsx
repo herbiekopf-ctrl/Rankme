@@ -21,6 +21,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
   );
 
   function handleDragEnd(event: DragEndEvent) {
+    if (controller.isPeriodLocked) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const toIndex = history.present.indexOf(String(over.id));
@@ -61,6 +62,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
                   onRemove={() => controller.removeRankedEntity(entity.id)}
                   onDetails={() => controller.setDetailId(entity.id)}
                   onCompare={controller.dataset.metricDefinitions?.length ? () => controller.toggleCompare(entity.id) : undefined}
+                  disabled={controller.isPeriodLocked}
                 />
               ))}
               {Array.from({ length: Math.min(remaining, history.present.length ? 3 : 5) }, (_, index) => (
