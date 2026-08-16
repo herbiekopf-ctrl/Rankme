@@ -44,7 +44,7 @@ export function PublishedBallot({
 
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
   const entities = entityIds.map((id) => entitiesById.get(id)).filter(Boolean);
-  const sourceStatus = dataset.connected ? "Saved CFBD dataset" : "Real dataset unavailable";
+  const sourceStatus = dataset.connected ? "Season data saved" : "Season data unavailable";
 
   async function share() {
     if (navigator.share) {
@@ -74,7 +74,7 @@ export function PublishedBallot({
         <div className="public-ballot-card">
           <div className="public-card-top">
             <div><span>RANKED</span><strong>{customConfig ? customConfig.title.toLocaleUpperCase() : template.entityType === "team" ? "2026 PRESEASON TOP 25" : "BEST CFB STADIUMS"}</strong></div>
-            <span>{dataset.sourceLabel}</span>
+            <span>Season snapshot</span>
           </div>
           <div className="public-list">
             {entities.map((entity, index) => entity && (
@@ -84,9 +84,9 @@ export function PublishedBallot({
                 <div><strong>{entity.name}</strong>{template.visibleAttributes.length > 0 && <span>{template.visibleAttributes.slice(0, 2).map((key) => formatAttribute(entity.attributes[key])).join(" · ")}</span>}</div>
               </article>
             ))}
-            {!entities.length && <div className="real-data-empty"><strong>This ballot cannot be rendered from real data yet.</strong><span>Import the referenced season or open a valid published ballot link.</span></div>}
+            {!entities.length && <div className="real-data-empty"><strong>This ranking is unavailable right now.</strong><span>Try again shortly or reopen a valid published link.</span></div>}
           </div>
-          <div className="public-card-footer"><span>Timestamp retained with published record</span><span>Dataset snapshot · {dataset.version}</span></div>
+          <div className="public-card-footer"><span>Published order preserved</span><span>Season snapshot preserved</span></div>
         </div>
 
         <aside className="ballot-insights">
@@ -98,7 +98,7 @@ export function PublishedBallot({
           <div className="insight-card">
             <span>DATA RECEIPT</span>
             <strong>{sourceStatus}</strong>
-            <p>Every published list carries its source and version so the context cannot silently change later.</p>
+            <p>Every published list preserves the season context used when it was created.</p>
           </div>
           <Link className="consensus-callout" href="/consensus"><span>Compare the country</span><strong>Open consensus →</strong></Link>
         </aside>

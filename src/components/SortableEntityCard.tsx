@@ -14,6 +14,7 @@ export function SortableEntityCard({
   onRemove,
   onCompare,
   onDetails,
+  focused = false,
   disabled = false,
 }: {
   entity: RankableEntity;
@@ -23,6 +24,7 @@ export function SortableEntityCard({
   onRemove: () => void;
   onCompare?: () => void;
   onDetails?: () => void;
+  focused?: boolean;
   disabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entity.id, disabled });
@@ -30,8 +32,9 @@ export function SortableEntityCard({
   return (
     <article
       ref={setNodeRef}
+      data-ranked-entity-id={entity.id}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`ranked-card${isDragging ? " is-dragging" : ""}${disabled ? " is-locked" : ""}`}
+      className={`ranked-card${isDragging ? " is-dragging" : ""}${disabled ? " is-locked" : ""}${focused ? " is-focused" : ""}`}
     >
       <button className="drag-handle" {...attributes} {...listeners} disabled={disabled} aria-label={`Drag ${entity.name} from rank ${rank}`}>⠿</button>
       <span className="rank-number">{rank}</span>

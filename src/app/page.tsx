@@ -32,7 +32,7 @@ export default function HomePage() {
 
       <section className="home-workflow">
         <div className="shell home-workflow-grid">
-          <div><span>01</span><strong>Choose real options</strong><p>Teams, players, coaches, stadiums, and every other supported category come from the saved CFBD catalog.</p></div>
+          <div><span>01</span><strong>Choose what to rank</strong><p>Teams, players, coaches, stadiums, and more are ready to compare.</p></div>
           <div><span>02</span><strong>Rank and investigate</strong><p>Search and add quickly. Open details, compare multiple choices, or sort the pool by any available metric when you need depth.</p></div>
           <div><span>03</span><strong>Publish by period</strong><p>Every response keeps its timestamp, season, and weekly cycle so opinions from different moments are never mixed together.</p></div>
         </div>

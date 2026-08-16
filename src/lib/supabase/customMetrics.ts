@@ -56,7 +56,7 @@ export async function saveMyCustomMetric(input: {
   formula: CustomMetricFormula;
 }): Promise<UserCustomMetric> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Connect Supabase to save personal metrics.");
+  if (!client) throw new Error("Sign in to save personal metrics.");
   const user = await requirePermanentRankedUser(client);
   const payload = {
     user_id: user.id,
@@ -77,7 +77,7 @@ export async function saveMyCustomMetric(input: {
 
 export async function deleteMyCustomMetric(id: string): Promise<void> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Connect Supabase to manage personal metrics.");
+  if (!client) throw new Error("Sign in to manage personal metrics.");
   const user = await requirePermanentRankedUser(client);
   const { error } = await client.from("user_custom_metrics").delete().eq("id", id).eq("user_id", user.id);
   if (error) throw error;

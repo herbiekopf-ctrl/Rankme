@@ -152,3 +152,94 @@ export async function loadMyRankingTrends(): Promise<RankingTrendList[]> {
     }];
   }).sort((left, right) => (right.snapshots.at(-1)?.periodAt ?? "").localeCompare(left.snapshots.at(-1)?.periodAt ?? ""));
 }
+
+export async function loadCommunityRankingTrends(): Promise<RankingTrendList[]> {
+  const client = getBrowserSupabaseClient();
+  if (!client) return [];
+  const { data: rankingRows, error: rankingError } = await client
+    .from("rankings")
+    .select("id,template_version_id,cycle_id,published_at,author_id")
+    .eq("status", "published")
+    .in("visibility", ["public", "unlisted"])
+    .order("published_at", { ascending: true })
+    .limit(5000);
+  if (rankingError) throw rankingError;
+  if (!rankingRows.length) return [];
+
+  const latestByVoterPeriod = new Map<string, (typeof rankingRows)[number]>();
+  for (const ranking of rankingRows) {
+    const key = `${ranking.template_version_id}:${ranking.cycle_id ?? "all"}:${ranking.author_id ?? ranking.id}`;
+    latestByVoterPeriod.set(key, ranking);
+  }
+  const rankings = [...latestByVoterPeriod.values()];
+  const rankingIds = rankings.map((ranking) => ranking.id);
+  const versionIds = [...new Set(rankings.map((ranking) => ranking.template_version_id))];
+  const cycleIds = [...new Set(rankings.map((ranking) => ranking.cycle_id).filter((id): id is string => Boolean(id)))];
+  const [versionResult, cycleResult, placementResult] = await Promise.all([
+    client.from("ranking_template_versions").select("id,template_id,default_length,response_cadence,ranking_templates(title,slug),entity_types(slug)").in("id", versionIds),
+    cycleIds.length ? client.from("ranking_cycles").select("id,slug,title,opens_at,closes_at").in("id", cycleIds) : Promise.resolve({ data: [], error: null }),
+    client.from("ranking_placements").select("ranking_id,position,entities(id,canonical_key,name,image_url,color)").in("ranking_id", rankingIds).order("position"),
+  ]);
+  if (versionResult.error) throw versionResult.error;
+  if (cycleResult.error) throw cycleResult.error;
+  if (placementResult.error) throw placementResult.error;
+
+  const versionById = new Map(versionResult.data.map((version) => [version.id, version]));
+  const cycleById = new Map((cycleResult.data ?? []).map((cycle) => [cycle.id, cycle]));
+  const placementsByRanking = new Map<string, TrendPlacement[]>();
+  for (const row of placementResult.data) {
+    const entity = Array.isArray(row.entities) ? row.entities[0] : row.entities;
+    if (!entity) continue;
+    const rows = placementsByRanking.get(row.ranking_id) ?? [];
+    rows.push({ entityId: entity.id, canonicalKey: entity.canonical_key, name: entity.name, imageUrl: entity.image_url, color: entity.color, position: row.position });
+    placementsByRanking.set(row.ranking_id, rows);
+  }
+
+  const rankingsByVersionPeriod = new Map<string, typeof rankings>();
+  for (const ranking of rankings) {
+    const key = `${ranking.template_version_id}:${ranking.cycle_id ?? "all"}`;
+    const rows = rankingsByVersionPeriod.get(key) ?? [];
+    rows.push(ranking);
+    rankingsByVersionPeriod.set(key, rows);
+  }
+
+  return versionIds.flatMap<RankingTrendList>((versionId) => {
+    const version = versionById.get(versionId);
+    if (!version) return [];
+    const template = Array.isArray(version.ranking_templates) ? version.ranking_templates[0] : version.ranking_templates;
+    const entityType = Array.isArray(version.entity_types) ? version.entity_types[0] : version.entity_types;
+    if (!template || !entityType) return [];
+    const snapshots = [...rankingsByVersionPeriod.entries()].flatMap<TrendSnapshot>(([key, ballots]) => {
+      if (!key.startsWith(`${versionId}:`) || !ballots.length) return [];
+      const cycleId = ballots[0].cycle_id;
+      const cycle = cycleId ? cycleById.get(cycleId) : undefined;
+      const entityScores = new Map<string, TrendPlacement & { points: number; positionTotal: number; appearances: number }>();
+      for (const ballot of ballots) {
+        for (const placement of placementsByRanking.get(ballot.id) ?? []) {
+          const current = entityScores.get(placement.entityId) ?? { ...placement, points: 0, positionTotal: 0, appearances: 0 };
+          current.points += Math.max(0, version.default_length + 1 - placement.position);
+          current.positionTotal += placement.position;
+          current.appearances += 1;
+          entityScores.set(placement.entityId, current);
+        }
+      }
+      const placements = [...entityScores.values()]
+        .sort((left, right) => (right.points / ballots.length) - (left.points / ballots.length) || (left.positionTotal / left.appearances) - (right.positionTotal / right.appearances) || left.name.localeCompare(right.name))
+        .slice(0, version.default_length)
+        .map((entity, index) => ({ entityId: entity.entityId, canonicalKey: entity.canonicalKey, name: entity.name, imageUrl: entity.imageUrl, color: entity.color, position: index + 1 }));
+      const publishedAt = ballots.at(-1)?.published_at;
+      if (!publishedAt) return [];
+      return [{
+        rankingId: `community:${versionId}:${cycleId ?? "all"}`,
+        cycleId,
+        periodSlug: cycle?.slug ?? "all-time",
+        periodTitle: cycle?.title ?? "All published rankings",
+        periodAt: cycle?.opens_at ?? ballots[0].published_at ?? publishedAt,
+        publishedAt,
+        placements,
+      }];
+    }).sort((left, right) => left.periodAt.localeCompare(right.periodAt));
+    if (!snapshots.length) return [];
+    return [{ templateVersionId: version.id, templateId: version.template_id, title: template.title, slug: template.slug, entityType: entityType.slug, responseCadence: version.response_cadence as ResponseCadence, maxLength: version.default_length, snapshots }];
+  }).sort((left, right) => (right.snapshots.at(-1)?.periodAt ?? "").localeCompare(left.snapshots.at(-1)?.periodAt ?? ""));
+}

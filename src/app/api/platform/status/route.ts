@@ -16,7 +16,7 @@ export async function GET() {
       tableCount: 0,
       entityTypeCount: 0,
       entityCount: 0,
-      message: "Add the Supabase URL and publishable key to this runtime.",
+      message: "App setup is incomplete.",
     };
     return NextResponse.json(status, { headers: { "Cache-Control": "no-store" } });
   }
@@ -38,12 +38,12 @@ export async function GET() {
     entityCount: entities.count ?? 0,
     activeDatasetVersion,
     message: !schemaReady
-      ? "Supabase is reachable, but the Ranked migration has not been applied."
+      ? "Data setup is incomplete."
       : !setup.serverWriteConfigured
-        ? "Schema is ready. Add the server secret so CFBD refreshes can persist data."
+        ? "Season data is available, but updates are not enabled."
         : activeDatasetVersion
-          ? "Relational database and saved dataset are connected."
-          : "Schema is ready. Run the first CFBD refresh to populate canonical entities and metrics.",
+          ? "Season data is ready."
+          : "Season data is still loading.",
   };
   return NextResponse.json(status, { headers: { "Cache-Control": "no-store" } });
 }

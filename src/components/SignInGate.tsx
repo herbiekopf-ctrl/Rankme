@@ -9,14 +9,14 @@ export function SignInGate() {
 
   async function continueWithGoogle() {
     const client = getBrowserSupabaseClient();
-    if (!client) return setError("Supabase is not configured for this app yet.");
+    if (!client) return setError("Sign-in is unavailable right now.");
     setSigningIn(true);
     setError("");
     try {
       await signInToRankedWithGoogle(client);
-    } catch (reason) {
+    } catch {
       setSigningIn(false);
-      setError(reason instanceof Error ? reason.message : "Google sign-in could not be started.");
+      setError("Google sign-in could not be started. Try again.");
     }
   }
 

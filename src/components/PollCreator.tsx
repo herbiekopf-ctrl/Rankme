@@ -3,13 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { rankableCategory } from "@/lib/domain/rankableCatalog";
-import type { CustomPollConfig, DatasetEnvelope, PlatformStatus, PollCatalog, RankingSubject } from "@/lib/domain/types";
-const FILTER_LABELS: Record<string, string> = { conference: "Conference", team: "Team", position: "Position", classYear: "Class", week: "Week", completed: "Game status", conferenceGame: "Conference game", state: "State", dome: "Dome", grass: "Grass field", committedTo: "Committed to", stars: "Stars", origin: "From", destination: "To", side: "Unit", collegeConference: "College conference", collegeTeam: "College", round: "Draft round" };
-
-function filterValue(value: unknown): string {
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
-}
+import { discoverCatalogFilters, mergeCatalogFilters } from "@/lib/domain/pollFilters";
+import type { CatalogFilterDefinition, CustomPollConfig, DatasetEnvelope, PlatformStatus, PollCatalog, RankingSubject } from "@/lib/domain/types";
 
 function saveLocalPoll(config: CustomPollConfig) {
   window.localStorage.setItem(`ranked:custom-poll:${config.id}`, JSON.stringify(config));
@@ -39,6 +34,7 @@ export function PollCreator() {
   const [loadError, setLoadError] = useState("");
   const [previewState, setPreviewState] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
+  const [discoveredFilters, setDiscoveredFilters] = useState<CatalogFilterDefinition[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -51,7 +47,7 @@ export function PollCreator() {
 
   useEffect(() => {
     fetch("/api/platform/status")
-      .then((response) => response.ok ? response.json() as Promise<PlatformStatus> : Promise.reject(new Error("Database status unavailable")))
+      .then((response) => response.ok ? response.json() as Promise<PlatformStatus> : Promise.reject(new Error("Status unavailable")))
       .then(setPlatformStatus)
       .catch(() => setPlatformStatus(null));
   }, []);
@@ -59,12 +55,8 @@ export function PollCreator() {
   const selectedSubject = useMemo(() => catalog?.subjects.find((option) => option.id === subject), [catalog, subject]);
   const availableFilters = useMemo(() => {
     if (selectedSubject?.filters?.length) return selectedSubject.filters;
-    if (!preview) return [];
-    return rankableCategory(subject).filterKeys.flatMap((key) => {
-      const values = [...new Set(preview.entities.map((entity) => filterValue(entity.attributes[key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      return values.length > 1 ? [{ key, label: FILTER_LABELS[key] ?? key, values }] : [];
-    });
-  }, [preview, selectedSubject, subject]);
+    return discoveredFilters;
+  }, [discoveredFilters, selectedSubject]);
   const filterQuery = useMemo(() => new URLSearchParams(Object.entries(filters).filter(([, value]) => value && value !== "All")).toString(), [filters]);
 
   useEffect(() => {
@@ -75,6 +67,7 @@ export function PollCreator() {
       .then((dataset) => {
         if (!active) return;
         setPreview(dataset);
+        setDiscoveredFilters((current) => mergeCatalogFilters(current, discoverCatalogFilters(subject, dataset.entities)));
         setPreviewState("ready");
       })
       .catch(() => {
@@ -93,6 +86,7 @@ export function PollCreator() {
     setTitle(definition.defaultTitle);
     setLength(definition.defaultLength);
     setFilters({});
+    setDiscoveredFilters([]);
     setPreviewState("loading");
     setError("");
   }
@@ -140,14 +134,14 @@ export function PollCreator() {
 
       <section className="poll-slip shell">
         <div className="poll-slip-status">
-          <span className={platformStatus?.schemaReady ? "data-badge is-live" : "data-badge"}>{platformStatus?.schemaReady ? "Database ready" : "Database setup pending"}</span>
-          <span className={catalog?.connected ? "data-badge is-live" : "data-badge"}>{catalog?.connected ? "Real CFBD data connected" : "Real data not imported"}</span>
+          <span className={platformStatus?.schemaReady ? "data-badge is-live" : "data-badge"}>{platformStatus?.schemaReady ? "Ready" : "Setup pending"}</span>
+          <span className={catalog?.connected ? "data-badge is-live" : "data-badge"}>{catalog?.connected ? "Season data ready" : "Season data loading"}</span>
           {loadError && <strong className="stale-warning">{loadError}</strong>}
         </div>
 
         <div className="poll-slip-grid">
-          <label className="creator-field wide"><span>What are people ranking?</span><select value={subject} onChange={(event) => chooseSubject(event.target.value as RankingSubject)} disabled={!catalog}>{(catalog?.subjects ?? []).map((option) => <option key={option.id} value={option.id} disabled={option.available === false}>{option.label}{option.available === false ? " · no imported data" : ` · ${option.count.toLocaleString()} options`}</option>)}</select></label>
-          <label className="creator-field"><span>Season</span><select value={year} onChange={(event) => { setYear(Number(event.target.value)); setFilters({}); setCatalog(null); setLoadError(""); setPreviewState("loading"); }}>{(catalog?.availableYears ?? [2025, 2026]).map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="creator-field wide"><span>What are people ranking?</span><select value={subject} onChange={(event) => chooseSubject(event.target.value as RankingSubject)} disabled={!catalog}>{(catalog?.subjects ?? []).map((option) => <option key={option.id} value={option.id} disabled={option.available === false}>{option.label}{option.available === false ? " · not ready" : ` · ${option.count.toLocaleString()} options`}</option>)}</select></label>
+          <label className="creator-field"><span>Season</span><select value={year} onChange={(event) => { setYear(Number(event.target.value)); setFilters({}); setDiscoveredFilters([]); setCatalog(null); setLoadError(""); setPreviewState("loading"); }}>{(catalog?.availableYears ?? [2025, 2026]).map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
           {!!selectedSubject?.exampleQuestions?.length && <div className="question-starters"><span>START WITH AN IDEA</span>{selectedSubject.exampleQuestions.map((example) => <button key={example} onClick={() => chooseExample(example)}>{example}</button>)}</div>}
           <label className="creator-field wide"><span>Poll question or title</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} placeholder="Most likely team to win the national title" /></label>
           <label className="creator-field wide"><span>Guidance for rankers (optional)</span><textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Explain what should count or the time horizon." rows={3} /></label>
@@ -165,7 +159,7 @@ export function PollCreator() {
           <div><span>RESPONSES</span><strong>{responseCadence === "weekly" ? "One each week" : responseCadence === "seasonal" ? "One this season" : "One per person"}</strong></div>
           <button className="button button-primary" onClick={createPoll}>Open ranking workspace →</button>
         </div>
-        {!catalog?.connected && <p className="real-data-empty">No poll can be created until the protected CFBD import loads real options into Supabase. Fake options are never substituted.</p>}
+        {!catalog?.connected && <p className="real-data-empty">Ranking options are still loading. Try again shortly.</p>}
         <p className="creator-guardrail">You can build locally without an account. Publishing requires sign-in. Ranked keeps one response per person for the period you choose.</p>
         {error && <p className="creator-error" role="alert">{error}</p>}
       </section>

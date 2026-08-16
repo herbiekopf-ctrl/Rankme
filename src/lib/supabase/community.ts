@@ -62,12 +62,12 @@ async function lookupRelationalEntityIds(dataset: DatasetEnvelope, localIds: str
 
 export async function persistCustomPoll(config: CustomPollConfig, dataset: DatasetEnvelope): Promise<CustomPollConfig> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Supabase is not connected in this browser.");
+  if (!client) throw new Error("Saving is unavailable right now.");
   await requirePermanentRankedUser(client);
   if (config.remoteTemplateVersionId) return config;
   const entityIds = await lookupRelationalEntityIds(dataset, dataset.entities.map((entity) => entity.id));
   if (entityIds.length !== dataset.entities.length) {
-    throw new Error("The option catalog is not fully saved in Supabase yet. Run the season import, then publish again.");
+    throw new Error("Some ranking options are still syncing. Refresh and try again.");
   }
   if (entityIds.length < config.length) throw new Error("The saved option pool is smaller than this ranking.");
 
@@ -101,7 +101,7 @@ export async function loadPersistedCustomPoll(pollId: string): Promise<CustomPol
 
 async function lookupDatasetVersionId(year: number): Promise<string> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Supabase is not connected in this browser.");
+  if (!client) throw new Error("Saving is unavailable right now.");
   const { data: savedDataset, error: datasetError } = await client.from("datasets").select("id").eq("slug", "cfbd-season").single();
   if (datasetError) throw datasetError;
   const { data: datasetVersion, error: versionError } = await client
@@ -114,13 +114,13 @@ async function lookupDatasetVersionId(year: number): Promise<string> {
     .limit(1)
     .maybeSingle();
   if (versionError) throw versionError;
-  if (!datasetVersion) throw new Error(`Import the ${year} season into Supabase before publishing this ranking.`);
+  if (!datasetVersion) throw new Error(`${year} season data is not ready to publish yet.`);
   return datasetVersion.id;
 }
 
 async function lookupBuiltInTemplateVersionId(template: RankingTemplate): Promise<string> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Supabase is not connected in this browser.");
+  if (!client) throw new Error("Saving is unavailable right now.");
   const { data: remoteTemplate, error } = await client
     .from("ranking_templates")
     .select("id, ranking_template_versions(id,version)")
@@ -129,7 +129,7 @@ async function lookupBuiltInTemplateVersionId(template: RankingTemplate): Promis
     .single();
   if (error) throw error;
   const version = [...remoteTemplate.ranking_template_versions].sort((left, right) => right.version - left.version)[0];
-  if (!version) throw new Error("The official ranking template has not been installed in Supabase.");
+  if (!version) throw new Error("This ranking is not ready to publish yet.");
   return version.id;
 }
 
@@ -155,10 +155,10 @@ export async function loadCurrentRankingPeriod(template: RankingTemplate, config
 
 export async function persistRankingDraft(config: CustomPollConfig, dataset: DatasetEnvelope, orderedIds: string[]): Promise<string> {
   const client = getBrowserSupabaseClient();
-  if (!client || !config.remoteTemplateVersionId) throw new Error("This poll has not been saved to Supabase.");
+  if (!client || !config.remoteTemplateVersionId) throw new Error("This poll is not ready to publish yet.");
   await requirePermanentRankedUser(client);
   const entityIds = await lookupRelationalEntityIds(dataset, orderedIds);
-  if (entityIds.length !== orderedIds.length) throw new Error("Some ranked options are missing from Supabase. Refresh the season import and try again.");
+  if (entityIds.length !== orderedIds.length) throw new Error("Some ranking options are still syncing. Refresh and try again.");
   const datasetVersionId = await lookupDatasetVersionId(config.year);
   const storageKey = `ranked:remote-draft:${config.remoteTemplateVersionId}`;
   const existingRankingId = window.localStorage.getItem(storageKey) ?? undefined;
@@ -178,11 +178,11 @@ export async function persistRankingDraft(config: CustomPollConfig, dataset: Dat
 
 export async function persistBuiltInRankingDraft(template: RankingTemplate, dataset: DatasetEnvelope, orderedIds: string[], year: number): Promise<string> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Supabase is not connected in this browser.");
+  if (!client) throw new Error("Saving is unavailable right now.");
   await requirePermanentRankedUser(client);
   const templateVersionId = await lookupBuiltInTemplateVersionId(template);
   const entityIds = await lookupRelationalEntityIds(dataset, orderedIds);
-  if (entityIds.length !== orderedIds.length) throw new Error("Some ranked options are missing from Supabase. Refresh the season import and try again.");
+  if (entityIds.length !== orderedIds.length) throw new Error("Some ranking options are still syncing. Refresh and try again.");
   const datasetVersionId = await lookupDatasetVersionId(year);
   const storageKey = `ranked:remote-draft:${templateVersionId}`;
   const { data, error } = await client.rpc("save_my_ranking_draft", {
@@ -201,7 +201,7 @@ export async function persistBuiltInRankingDraft(template: RankingTemplate, data
 
 export async function publishPersistedRanking(rankingId: string): Promise<void> {
   const client = getBrowserSupabaseClient();
-  if (!client) throw new Error("Supabase is not connected in this browser.");
+  if (!client) throw new Error("Publishing is unavailable right now.");
   await requirePermanentRankedUser(client);
   const { error } = await client.rpc("publish_my_ranking", { p_ranking_id: rankingId });
   if (error) throw error;

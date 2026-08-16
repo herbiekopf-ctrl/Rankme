@@ -6,7 +6,7 @@ import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 function saveLabel(state: RankingWorkspaceController["saveState"]) {
   if (state === "loading") return "Opening draft";
   if (state === "saving") return "Saving";
-  if (state === "cloud") return "Relational draft saved";
+  if (state === "cloud") return "Saved to your account";
   return "Local draft saved";
 }
 

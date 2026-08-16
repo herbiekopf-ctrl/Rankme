@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { resolveConferenceMedia } from "@/lib/domain/conferenceMedia";
 import type { DatasetEnvelope, MetricDefinition, RankableEntity } from "@/lib/domain/types";
 
 const venueSchema = z.object({
@@ -675,7 +676,8 @@ export function buildDerivedEntities(teams: CfbdTeam[], teamEntities: RankableEn
   const conferences: RankableEntity[] = [...conferenceGroups.entries()].map(([conference, members]) => {
     const numeric = (key: string) => members.map((member) => asNumber(member.attributes[key])).filter((value): value is number => value != null);
     const average = (values: number[]) => values.length ? round(values.reduce((sum, value) => sum + value, 0) / values.length, 2) : null;
-    return { id: `conference:${slug(conference)}`, entityType: "conference", name: conference, aliases: members.map((member) => member.name), color: members[0]?.color, attributes: { teamCount: members.length, teams: members.map((member) => member.name).join(", "), totalWins: numeric("wins").reduce((sum, value) => sum + value, 0), averageWinPct: average(numeric("winPct")), averageElo: average(numeric("elo")), averageSrs: average(numeric("srs")) } };
+    const media = resolveConferenceMedia(conference);
+    return { id: `conference:${slug(conference)}`, entityType: "conference", name: conference, aliases: members.map((member) => member.name), imageUrl: media?.imageUrl, color: media?.color ?? members[0]?.color, attributes: { teamCount: members.length, teams: members.map((member) => member.name).join(", "), totalWins: numeric("wins").reduce((sum, value) => sum + value, 0), averageWinPct: average(numeric("winPct")), averageElo: average(numeric("elo")), averageSrs: average(numeric("srs")) } };
   });
   const gameEntities: RankableEntity[] = games.map((game) => {
     const totalPoints = game.homePoints != null && game.awayPoints != null ? game.homePoints + game.awayPoints : null;

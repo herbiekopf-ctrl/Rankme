@@ -22,7 +22,7 @@ export function RankingWorkspace({
   customConfig?: CustomPollConfig;
 }) {
   const controller = useRankingWorkspace({ template, initialDataset, customConfig });
-  const sourceBadge = initialDataset.connected ? "Source data connected" : "Source data not imported";
+  const sourceBadge = initialDataset.connected ? "Season data ready" : "Season data unavailable";
 
   return (
     <main className="rw-page">
@@ -35,11 +35,8 @@ export function RankingWorkspace({
         </div>
         <div className="builder-meta">
           <span className={initialDataset.source === "collegefootballdata" ? "data-badge is-live" : "data-badge"}>{sourceBadge}</span>
-          <small>{initialDataset.sourceLabel} · {initialDataset.entities.length} options · updated {timeAgo(initialDataset.refreshedAt)}</small>
-          {initialDataset.source === "collegefootballdata" && initialDataset.upstreamRequests ? (
-            <small>One shared snapshot · {initialDataset.upstreamRequests} source calls · zero per-user CFBD calls</small>
-          ) : null}
-          {initialDataset.warnings?.map((warning) => <strong className="stale-warning" key={warning}>{warning}</strong>)}
+          <small>{initialDataset.entities.length} options · updated {timeAgo(initialDataset.refreshedAt)}</small>
+          {!!initialDataset.warnings?.length && <strong className="stale-warning">Some season data may still be updating.</strong>}
         </div>
       </section>
 
@@ -47,9 +44,9 @@ export function RankingWorkspace({
         <WorkspaceHeader controller={controller} />
         {!initialDataset.entities.length ? (
           <div className="builder-empty-state">
-            <p className="kicker">REAL DATA REQUIRED</p>
-            <h2>This ranking has no imported options yet.</h2>
-            <p>Run the protected import. Ranked will not replace missing data with invented entities, statistics, or results.</p>
+            <p className="kicker">OPTIONS UNAVAILABLE</p>
+            <h2>This ranking is still loading.</h2>
+            <p>Try again shortly.</p>
           </div>
         ) : (
           <div className="rw-grid">

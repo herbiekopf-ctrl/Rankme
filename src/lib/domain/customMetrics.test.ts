@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateCustomMetricScores, metricDesirability } from "./metrics";
+import { calculateCustomMetricScores, metricDesirability, metricHeatPresentation, rankDifference } from "./metrics";
 import type { CustomMetricFormula, MetricDefinition, RankableEntity } from "./types";
 
 const definitions: MetricDefinition[] = [
@@ -21,6 +21,19 @@ describe("custom metric calculations", () => {
 
   it("keeps zero-variance populations visually neutral", () => {
     expect(metricDesirability(10, [10, 10, 10], "desc")).toBe(0.5);
+  });
+
+  it("maps strength to accessible weak, neutral, and strong bands", () => {
+    expect(metricHeatPresentation(0.95)).toMatchObject({ band: "strong", label: "Strong" });
+    expect(metricHeatPresentation(0.5)).toMatchObject({ band: "neutral", label: "Middle" });
+    expect(metricHeatPresentation(0.05)).toMatchObject({ band: "weak", label: "Weak" });
+    expect(metricHeatPresentation(null)).toMatchObject({ band: "missing", label: "No data" });
+  });
+
+  it("explains model and metric movement against the user's rank", () => {
+    expect(rankDifference(11, 5)).toEqual({ amount: 6, label: "↑6", tone: "positive" });
+    expect(rankDifference(3, 8)).toEqual({ amount: -5, label: "↓5", tone: "negative" });
+    expect(rankDifference(4, 4)).toEqual({ amount: 0, label: "Same", tone: "neutral" });
   });
 
   it("combines weighted normalized metrics without changing source data", () => {

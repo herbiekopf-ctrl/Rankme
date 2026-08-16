@@ -61,7 +61,7 @@ test("keeps comparison inside analysis while the ranking remains visible", async
 
   await page.getByRole("button", { name: "Compare Alpha State" }).click();
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
-  await expect(analysisPane.getByRole("heading", { name: "Compare any teams in this ranking." })).toBeVisible();
+  await expect(analysisPane.getByRole("heading", { name: "Compare any teams." })).toBeVisible();
   await expect(page.locator('[data-workspace-pane="ranking"]')).toBeVisible();
   await analysisPane.getByLabel("Beta Tech").check();
   await expect(analysisPane.getByRole("button", { name: "Alpha State" })).toBeVisible();
@@ -104,4 +104,39 @@ test("keeps the generic stadium workflow usable at 390px", async ({ page }, test
   await page.getByRole("button", { name: /^YOUR RANKING/ }).last().click();
   await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
   await expect.poll(() => analysisScroll.evaluate((element) => element.scrollTop)).toBe(120);
+});
+
+test("makes Live Model dense and explicit at 390px", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "390px Live Model baseline");
+  await openFixtureRanking(page, teamPollConfig, teamDataset);
+  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
+  await page.getByRole("button", { name: "Add Alpha State" }).click();
+  await page.getByRole("tab", { name: "Live Model" }).click();
+
+  const model = page.getByRole("dialog", { name: "Build a live model" });
+  await expect(model.getByRole("tab", { name: /Results/ })).toHaveAttribute("aria-selected", "true");
+  await expect(model.locator(".custom-metric-preview li")).toHaveCount(4);
+  await expect(model.getByText("My #1 → Model #1")).toBeVisible();
+  await expect(model.locator(".metric-model-signals").first()).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await model.getByRole("tab", { name: /Model inputs/ }).click();
+  await expect(model.getByPlaceholder("My Resume Score")).toBeVisible();
+  await expect(model.locator(".metric-builder-controls.is-mobile-active")).toBeVisible();
+  await expect(model.locator(".custom-metric-inputs output")).toHaveText(["50%", "50%"]);
+});
+
+test("uses stacked accessible heat maps on mobile comparison", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "390px comparison baseline");
+  await openFixtureRanking(page, teamPollConfig, teamDataset);
+  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
+  await page.getByRole("button", { name: "Add Alpha State" }).click();
+  await page.getByRole("button", { name: "Compare Alpha State" }).click();
+  await page.getByLabel("Beta Tech").check();
+
+  await expect(page.locator(".comparison-mobile-stack")).toBeVisible();
+  await expect(page.locator(".comparison-desktop-table")).toBeHidden();
+  await expect(page.getByText("Your rank #1")).toBeVisible();
+  await expect(page.locator(".comparison-mobile-metric").first()).toContainText(/#1|#2|Strong|Above avg\.|Middle|Below avg\.|Weak/);
+  await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

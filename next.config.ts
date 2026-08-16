@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
         hostname: "cdn.collegefootballdata.com",
         pathname: "/logos/**",
       },
+      {
+        protocol: "https",
+        hostname: "a.espncdn.com",
+        pathname: "/i/teamlogos/ncaa_conf/**",
+      },
     ],
   },
   experimental: {
