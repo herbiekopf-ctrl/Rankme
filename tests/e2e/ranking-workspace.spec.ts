@@ -38,11 +38,11 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   await page.getByRole("button", { name: "Add Beta Tech" }).click();
   await expect(page.getByRole("heading", { name: "2 of 3 ranked" })).toBeVisible();
   await page.getByRole("button", { name: "Move Beta Tech up" }).click();
-  await expect(page.locator(".ranked-identity > strong")).toHaveText(["Beta Tech", "Alpha State"]);
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
   await page.getByRole("button", { name: /Undo/ }).click();
-  await expect(page.locator(".ranked-identity > strong")).toHaveText(["Alpha State", "Beta Tech"]);
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Alpha State", "Beta Tech"]);
   await page.getByRole("button", { name: /Redo/ }).click();
-  await expect(page.locator(".ranked-identity > strong")).toHaveText(["Beta Tech", "Alpha State"]);
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
   await page.getByRole("button", { name: "Remove Alpha State" }).click();
   await expect(page.getByRole("button", { name: "Add Alpha State" })).toBeVisible();
   await page.getByRole("button", { name: /Undo/ }).click();
@@ -61,11 +61,12 @@ test("keeps comparison inside analysis while the ranking remains visible", async
 
   await page.getByRole("button", { name: "Compare Alpha State" }).click();
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
-  await expect(analysisPane.getByRole("heading", { name: "Compare the data, then make the call." })).toBeVisible();
+  await expect(analysisPane.getByRole("heading", { name: "Compare any teams in this ranking." })).toBeVisible();
   await expect(page.locator('[data-workspace-pane="ranking"]')).toBeVisible();
-  await analysisPane.getByLabel("Add up to four teams").selectOption("team:2");
-  await expect(analysisPane.getByRole("columnheader", { name: /Alpha State/ })).toBeVisible();
-  await expect(analysisPane.getByRole("columnheader", { name: /Beta Tech/ })).toBeVisible();
+  await analysisPane.getByLabel("Beta Tech").check();
+  await expect(analysisPane.getByRole("button", { name: "Alpha State" })).toBeVisible();
+  await expect(analysisPane.getByRole("button", { name: "Beta Tech" })).toBeVisible();
+  await expect(analysisPane.getByText("2 selected · no limit")).toBeVisible();
 });
 
 test("hydrates an existing local draft without changing its saved order", async ({ page }, testInfo) => {
@@ -79,7 +80,7 @@ test("hydrates an existing local draft without changing its saved order", async 
     entityIds: ["team:3", "team:1"],
     updatedAt: "2026-08-15T23:00:00.000Z",
   });
-  await expect(page.locator(".ranked-identity > strong")).toHaveText(["Gamma University", "Alpha State"]);
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Gamma University", "Alpha State"]);
   await expect(page.getByRole("heading", { name: "2 of 3 ranked" })).toBeVisible();
 });
 

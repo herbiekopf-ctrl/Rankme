@@ -4,6 +4,7 @@ import { ComparisonTool } from "../ComparisonTool";
 import { TeamMark } from "../TeamMark";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 import { formatAttribute } from "@/lib/utils";
+import { CustomMetricBuilder } from "./CustomMetricBuilder";
 
 export function AnalysisPane({ controller }: { controller: RankingWorkspaceController }) {
   const { analysisMode, candidates, compareIds, dataset, history, template } = controller;
@@ -36,6 +37,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             disabled={!hasMetrics}
             onClick={() => controller.setAnalysisMode("compare")}
           >Compare{compareIds.length ? ` (${compareIds.length})` : ""}</button>
+          <button type="button" role="tab" aria-selected={analysisMode === "metric-builder"} className={analysisMode === "metric-builder" ? "is-active" : ""} disabled={!hasMetrics} onClick={() => controller.setAnalysisMode("metric-builder")}>Create metric</button>
         </div>
       </div>
 
@@ -44,9 +46,15 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
           <ComparisonTool
             dataset={dataset}
             selectedIds={compareIds}
+            rankedIds={history.present}
+            customMetrics={controller.customMetrics.metrics}
             onSelectedIdsChange={controller.setCompareIds}
+            onOpenEntity={controller.setDetailId}
+            onAddEntity={controller.addEntity}
             onClose={() => controller.setAnalysisMode("candidates")}
           />
+        ) : analysisMode === "metric-builder" && hasMetrics ? (
+          <CustomMetricBuilder controller={controller} />
         ) : (
           <>
             <div className="rw-candidate-controls">
@@ -77,6 +85,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                       {dataset.metricDefinitions?.map((metric) => (
                         <option key={metric.key} value={metric.key}>{metric.group ? `${metric.group} · ` : ""}{metric.label}</option>
                       ))}
+                      {controller.customMetrics.metrics.map((metric) => <option key={metric.id} value={`custom:${metric.id}`}>My Metrics · {metric.name}</option>)}
                     </select>
                   </label>
                 )}
