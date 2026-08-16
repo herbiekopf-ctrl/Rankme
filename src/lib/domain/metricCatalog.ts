@@ -1,6 +1,6 @@
 import type { MetricDefinition, RankableEntity } from "./types";
 
-type MetricOverride = Partial<Pick<MetricDefinition, "label" | "description" | "format" | "direction" | "group" | "source">>;
+type MetricOverride = Partial<Pick<MetricDefinition, "label" | "description" | "format" | "direction" | "group" | "source" | "unitLabel">>;
 
 type EntityMetricCatalog = {
   coreMetricKeys: string[];
@@ -69,8 +69,24 @@ const ENTITY_METRIC_CATALOG: Record<string, EntityMetricCatalog> = {
     },
   },
   player: {
-    coreMetricKeys: ["classYear", "height", "weight"],
+    coreMetricKeys: ["stat:passing:yds", "stat:passing:td", "stat:passing:pct", "stat:rushing:yds", "stat:rushing:td", "stat:rushing:ypc", "stat:receiving:rec", "stat:receiving:yds", "stat:receiving:td", "stat:defensive:tot", "stat:defensive:sacks", "stat:defensive:tfl", "stat:interceptions:int", "ppa:averagePPA:all", "usage:usage:overall", "classYear", "height", "weight"],
     overrides: {
+      "stat:passing:yds": { label: "Pass yards", description: "Total passing yards in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "yards" },
+      "stat:passing:td": { label: "Pass TD", description: "Passing touchdowns in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "touchdowns" },
+      "stat:passing:pct": { label: "Completion %", description: "Share of pass attempts completed.", format: "percentage", direction: "desc", group: "Efficiency", unitLabel: "percent" },
+      "stat:passing:int": { label: "Interceptions thrown", description: "Passes intercepted by the defense. Lower is better.", format: "integer", direction: "asc", group: "Efficiency", unitLabel: "interceptions" },
+      "stat:rushing:yds": { label: "Rush yards", description: "Total rushing yards in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "yards" },
+      "stat:rushing:td": { label: "Rush TD", description: "Rushing touchdowns in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "touchdowns" },
+      "stat:rushing:ypc": { label: "Yards / carry", description: "Average rushing yards per carry.", format: "decimal", direction: "desc", group: "Efficiency", unitLabel: "yards per carry" },
+      "stat:receiving:rec": { label: "Receptions", description: "Completed passes caught in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "receptions" },
+      "stat:receiving:yds": { label: "Receiving yards", description: "Total receiving yards in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "yards" },
+      "stat:receiving:td": { label: "Receiving TD", description: "Receiving touchdowns in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "touchdowns" },
+      "stat:defensive:tot": { label: "Total tackles", description: "Total credited tackles in the selected season.", format: "integer", direction: "desc", group: "Production", unitLabel: "tackles" },
+      "stat:defensive:sacks": { label: "Sacks", description: "Credited quarterback sacks in the selected season.", format: "decimal", direction: "desc", group: "Production", unitLabel: "sacks" },
+      "stat:defensive:tfl": { label: "Tackles for loss", description: "Credited tackles behind the line of scrimmage.", format: "decimal", direction: "desc", group: "Production", unitLabel: "tackles" },
+      "stat:interceptions:int": { label: "Defensive interceptions", description: "Passes intercepted on defense.", format: "integer", direction: "desc", group: "Production", unitLabel: "interceptions" },
+      "ppa:averagePPA:all": { label: "Average PPA", description: "Average predicted points added when the player is involved.", format: "decimal", direction: "desc", group: "Efficiency", source: "CFBD PPA" },
+      "usage:usage:overall": { label: "Usage share", description: "Share of team plays involving the player.", format: "percentage", direction: "desc", group: "Efficiency", unitLabel: "percent" },
       classYear: { label: "Class year", description: "Roster class year.", format: "integer", direction: "desc", group: "Roster" },
       height: { label: "Height", description: "Listed player height in inches.", format: "integer", direction: "desc", group: "Physical" },
       weight: { label: "Weight", description: "Listed player weight in pounds.", format: "integer", direction: "desc", group: "Physical" },

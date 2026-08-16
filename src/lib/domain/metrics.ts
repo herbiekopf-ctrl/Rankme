@@ -1,6 +1,16 @@
 import type { CustomMetricFormula, MetricDefinition, RankableEntity, UserCustomMetric } from "./types";
 
 export type MetricRank = { entity: RankableEntity; rank: number; value: number | null };
+export type MetricHeatBand = "strong" | "above-average" | "neutral" | "below-average" | "weak" | "missing";
+
+export type MetricHeatPresentation = {
+  score: number | null;
+  band: MetricHeatBand;
+  label: string;
+  background: string;
+  border: string;
+  foreground: string;
+};
 
 export function numericMetric(entity: RankableEntity, key: string): number | null {
   const value = entity.attributes[key];
@@ -26,6 +36,30 @@ export function rankByMetric(entities: RankableEntity[], metric: MetricDefinitio
     lastValue = item.value;
     return { ...item, rank: lastRank };
   });
+}
+
+export function metricRanksByEntity(entities: RankableEntity[], metric: MetricDefinition): Map<string, MetricRank> {
+  return new Map(rankByMetric(entities, metric).map((item) => [item.entity.id, item]));
+}
+
+export function metricHeatPresentation(score: number | null): MetricHeatPresentation {
+  if (score == null) {
+    return { score, band: "missing", label: "No data", background: "#f2f1ec", border: "#deddd7", foreground: "#6f7772" };
+  }
+  const normalized = Math.max(0, Math.min(1, score));
+  if (normalized >= 0.82) return { score: normalized, band: "strong", label: "Strong", background: "#cae8d6", border: "#80bd98", foreground: "#123f2b" };
+  if (normalized >= 0.62) return { score: normalized, band: "above-average", label: "Above avg.", background: "#e0eee4", border: "#add0b8", foreground: "#24553b" };
+  if (normalized >= 0.38) return { score: normalized, band: "neutral", label: "Middle", background: "#efeee8", border: "#d8d5ca", foreground: "#4e5751" };
+  if (normalized >= 0.18) return { score: normalized, band: "below-average", label: "Below avg.", background: "#f1dfdc", border: "#dab4ae", foreground: "#713a34" };
+  return { score: normalized, band: "weak", label: "Weak", background: "#eccbc6", border: "#cc8e86", foreground: "#6a2d28" };
+}
+
+export function rankDifference(myRank: number | null, comparisonRank: number): { amount: number | null; label: string; tone: "positive" | "negative" | "neutral" } {
+  if (myRank == null || myRank <= 0) return { amount: null, label: "Not in your ranking", tone: "neutral" };
+  const amount = myRank - comparisonRank;
+  if (amount > 0) return { amount, label: `↑${amount}`, tone: "positive" };
+  if (amount < 0) return { amount, label: `↓${Math.abs(amount)}`, tone: "negative" };
+  return { amount: 0, label: "Same", tone: "neutral" };
 }
 
 export function formatMetricValue(value: number | null, metric: MetricDefinition): string {

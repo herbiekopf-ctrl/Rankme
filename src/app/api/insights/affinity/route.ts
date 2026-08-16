@@ -13,9 +13,9 @@ const requestSchema = z.object({
 
 export async function POST(request: Request) {
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Invalid relational query." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Check the comparison options and try again." }, { status: 400 });
   const client = createAdminSupabaseClient();
-  if (!client) return NextResponse.json({ error: "The Supabase server secret is not configured." }, { status: 503 });
+  if (!client) return NextResponse.json({ error: "Community comparisons are unavailable." }, { status: 503 });
   const { data, error } = await client.rpc("get_ranking_affinity", {
     p_anchor_template_version_id: parsed.data.anchorTemplateVersionId,
     p_anchor_cycle_id: null as unknown as string,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     p_filters: parsed.data.filters as Json,
     p_min_cohort: 25,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 503 });
+  if (error) return NextResponse.json({ error: "Community comparison could not be loaded." }, { status: 503 });
   const result = data as Record<string, unknown>;
   const rankingPatterns = Array.isArray(result.rankingPatterns) ? result.rankingPatterns : [];
   const entityIds = rankingPatterns.flatMap((pattern) => typeof pattern === "object" && pattern && "entityId" in pattern && typeof pattern.entityId === "string" ? [pattern.entityId] : []);

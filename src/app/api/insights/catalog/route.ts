@@ -5,15 +5,15 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const client = createAdminSupabaseClient();
-  if (!client) return NextResponse.json({ connected: false, templates: [], message: "Add the Supabase server secret to load relational polls." });
+  if (!client) return NextResponse.json({ connected: false, templates: [], message: "Community comparisons are unavailable." });
 
   const { data: templates, error: templateError } = await client.from("ranking_templates").select("id, title, description, visibility").eq("status", "active").eq("visibility", "public").order("created_at", { ascending: false }).limit(100);
-  if (templateError) return NextResponse.json({ connected: true, templates: [], message: templateError.message }, { status: 503 });
+  if (templateError) return NextResponse.json({ connected: true, templates: [], message: "Community polls could not be loaded." }, { status: 503 });
   const templateIds = (templates ?? []).map((template) => template.id);
-  if (!templateIds.length) return NextResponse.json({ connected: true, templates: [], message: "Create the first public relational poll." });
+  if (!templateIds.length) return NextResponse.json({ connected: true, templates: [], message: "Create the first public poll." });
 
   const { data: versions, error: versionError } = await client.from("ranking_template_versions").select("id, template_id, entity_type_id, version").in("template_id", templateIds).order("version", { ascending: false });
-  if (versionError) return NextResponse.json({ connected: true, templates: [], message: versionError.message }, { status: 503 });
+  if (versionError) return NextResponse.json({ connected: true, templates: [], message: "Community polls could not be loaded." }, { status: 503 });
   const versionIds = (versions ?? []).map((version) => version.id);
   const [{ data: templateEntities }, { data: rankings }] = await Promise.all([
     versionIds.length ? client.from("ranking_template_entities").select("template_version_id, entity_id").in("template_version_id", versionIds) : Promise.resolve({ data: [] }),
@@ -48,7 +48,7 @@ export async function GET() {
 
   return NextResponse.json({
     connected: true,
-    message: "Live relational catalog",
+    message: "Community polls ready",
     templates: [...latestVersionByTemplate.values()].map((version) => ({
       templateId: version.template_id,
       templateVersionId: version.id,

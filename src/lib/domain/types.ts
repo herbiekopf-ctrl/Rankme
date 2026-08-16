@@ -28,6 +28,9 @@ export type MetricDefinition = {
   direction: "asc" | "desc";
   group?: "Resume" | "Scoring" | "Production" | "Efficiency" | "Power" | "Roster" | "History" | "Physical" | "Other";
   source?: string;
+  unitLabel?: string;
+  season?: number;
+  context?: "current-season" | "prior-season" | "career" | "static";
   tier?: "core" | "advanced";
   entityType?: string;
   populatedEntityCount?: number;

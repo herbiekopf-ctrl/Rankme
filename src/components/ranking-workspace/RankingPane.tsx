@@ -62,6 +62,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
                   onRemove={() => controller.removeRankedEntity(entity.id)}
                   onDetails={() => controller.setDetailId(entity.id)}
                   onCompare={controller.dataset.metricDefinitions?.length ? () => controller.toggleCompare(entity.id) : undefined}
+                  focused={controller.focusedRankId === entity.id}
                   disabled={controller.isPeriodLocked}
                 />
               ))}

@@ -3,8 +3,11 @@ import "server-only";
 import type { CollegeFootballSnapshot } from "@/lib/adapters/cfbd";
 import { RANKABLE_CATEGORIES, rankableCategory } from "@/lib/domain/rankableCatalog";
 import { curateMetricDefinitions } from "@/lib/domain/metricCatalog";
+import { mergePriorSeasonContext } from "@/lib/domain/priorSeasonContext";
 import type { DatasetEnvelope, PollCatalog, RankableEntity, RankingSubject } from "@/lib/domain/types";
 import { loadSupabaseCatalogReceipt, loadSupabaseRankableDataset } from "@/lib/data/supabaseRankables";
+
+const PRIOR_CONTEXT_ENTITY_TYPES = new Set(["team", "team-season", "player", "coach"]);
 
 function emptyDataset(year: number, subject: RankingSubject, warning: string): DatasetEnvelope {
   return {
@@ -57,8 +60,11 @@ function matchesFilters(entity: RankableEntity, filters: Record<string, string>)
 
 export async function loadTeamDataset(year: number): Promise<DatasetEnvelope> {
   try {
-    const relational = await loadSupabaseRankableDataset(year, "teams");
-    if (relational?.entities.length) return relational;
+    const [relational, previous] = await Promise.all([
+      loadSupabaseRankableDataset(year, "teams"),
+      year > 2025 ? loadSupabaseRankableDataset(year - 1, "teams").catch(() => null) : Promise.resolve(null),
+    ]);
+    if (relational?.entities.length) return mergePriorSeasonContext(relational, previous, year);
   } catch {}
   return emptyDataset(year, "teams", "Real team data has not been imported. Run the protected initial import after configuring the server secrets.");
 }
@@ -68,18 +74,25 @@ export async function loadRankableDataset(
   subject: RankingSubject,
   filters: Record<string, string> = {},
 ): Promise<DatasetEnvelope> {
+  const category = rankableCategory(subject);
   try {
-    const relational = await loadSupabaseRankableDataset(year, subject);
+    const [relational, previous] = await Promise.all([
+      loadSupabaseRankableDataset(year, subject),
+      year > 2025 && PRIOR_CONTEXT_ENTITY_TYPES.has(category.entityType)
+        ? loadSupabaseRankableDataset(year - 1, subject).catch(() => null)
+        : Promise.resolve(null),
+    ]);
     if (relational?.entities.length) {
-      const entities = relational.entities.filter((entity) => matchesFilters(entity, filters));
+      const withContext = mergePriorSeasonContext(relational, previous, year);
+      const entities = withContext.entities.filter((entity) => matchesFilters(entity, filters));
       return {
-        ...relational,
+        ...withContext,
         entities,
-        metricDefinitions: curateMetricDefinitions(rankableCategory(subject).entityType, relational.metricDefinitions ?? [], entities),
+        metricDefinitions: curateMetricDefinitions(category.entityType, withContext.metricDefinitions ?? [], entities),
       };
     }
   } catch {}
-  return emptyDataset(year, subject, `Real ${rankableCategory(subject).label.toLocaleLowerCase()} data has not been imported for ${year}.`);
+  return emptyDataset(year, subject, `${category.label} are not available for ${year} yet.`);
 }
 
 export async function loadPollCatalog(year: number): Promise<PollCatalog> {

@@ -30,6 +30,14 @@ describe("entity media presentation", () => {
     });
   });
 
+  it("uses canonical conference marks instead of presentation-level logo hacks", () => {
+    expect(resolveEntityMedia(entity({ id: "conference:sec", entityType: "conference", name: "SEC" }))).toMatchObject({
+      kind: "image",
+      role: "canonical-entity-mark",
+      imageUrl: "https://a.espncdn.com/i/teamlogos/ncaa_conf/500/8.png",
+    });
+  });
+
   it("detects missing and mismatched canonical team logo mappings", () => {
     expect(auditCanonicalTeamMedia([
       entity({ id: "team:1", imageUrl: "https://cdn.collegefootballdata.com/logos/1.png" }),

@@ -5,9 +5,14 @@ import Link from "next/link";
 import { SignInGate } from "./SignInGate";
 import { TeamMark } from "./TeamMark";
 import type { RankableEntity } from "@/lib/domain/types";
-import { entityRankSeries, loadMyRankingTrends, trendEntities, type RankingTrendList, type TrendEntity } from "@/lib/supabase/rankingTrends";
+import { entityRankSeries, loadCommunityRankingTrends, loadMyRankingTrends, trendEntities, type RankingTrendList, type TrendEntity } from "@/lib/supabase/rankingTrends";
 
 const SERIES_COLORS = ["#17694a", "#c07b16", "#4169a8", "#b54c43", "#7651a8", "#17848b", "#9a5c79", "#647331", "#353f49"];
+type TrendPerspective = "mine" | "community";
+
+function PerspectiveToggle({ value, onChange }: { value: TrendPerspective; onChange: (value: TrendPerspective) => void }) {
+  return <div className="trend-perspective-toggle" role="tablist" aria-label="Ranking perspective"><button type="button" role="tab" aria-selected={value === "mine"} className={value === "mine" ? "is-active" : ""} onClick={() => onChange("mine")}>My Rankings</button><button type="button" role="tab" aria-selected={value === "community"} className={value === "community" ? "is-active" : ""} onClick={() => onChange("community")}>All Voters</button></div>;
+}
 
 function markEntity(entity: TrendEntity, entityType: string): RankableEntity {
   return {
@@ -82,12 +87,15 @@ export function RankingTrends() {
   const [selectedListId, setSelectedListId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
+  const [perspective, setPerspective] = useState<TrendPerspective>("mine");
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
   const [state, setState] = useState<"loading" | "ready" | "signed-out" | "empty">("loading");
 
   useEffect(() => {
     let active = true;
-    void loadMyRankingTrends()
+    Promise.resolve().then(() => { if (active) setState("loading"); });
+    const loader = perspective === "mine" ? loadMyRankingTrends : loadCommunityRankingTrends;
+    void loader()
       .then((items) => {
         if (!active) return;
         setLists(items);
@@ -95,9 +103,9 @@ export function RankingTrends() {
         setSelectedIds(items[0]?.snapshots.at(-1)?.placements.slice(0, 3).map((placement) => placement.entityId) ?? []);
         setState(items.length ? "ready" : "empty");
       })
-      .catch(() => { if (active) setState("signed-out"); });
+      .catch(() => { if (active) setState(perspective === "mine" ? "signed-out" : "empty"); });
     return () => { active = false; };
-  }, []);
+  }, [perspective]);
 
   const list = useMemo(() => lists.find((item) => item.templateVersionId === selectedListId) ?? lists[0], [lists, selectedListId]);
   const entities = useMemo(() => list ? trendEntities(list) : [], [list]);
@@ -119,19 +127,19 @@ export function RankingTrends() {
     setQuery("");
   }
 
-  if (state === "loading") return <main className="trends-page shell"><div className="trends-empty"><strong>Loading your opinion history…</strong></div></main>;
-  if (state === "signed-out") return <main className="trends-page shell"><section className="trends-heading"><p className="kicker">OPINION TRENDS</p><h1>See every move.</h1><p>Sign in to compare your rankings over time.</p></section><SignInGate /></main>;
-  if (state === "empty" || !list) return <main className="trends-page shell"><section className="trends-heading"><p className="kicker">OPINION TRENDS</p><h1>Your first line starts here.</h1><p>Publish a period-based ranking to begin your history.</p><Link className="button button-primary" href="/consensus">Find a poll</Link></section></main>;
+  if (state === "loading") return <main className="trends-page shell"><PerspectiveToggle value={perspective} onChange={setPerspective} /><div className="trends-empty"><strong>Loading {perspective === "mine" ? "your" : "community"} ranking history…</strong></div></main>;
+  if (state === "signed-out") return <main className="trends-page shell"><PerspectiveToggle value={perspective} onChange={setPerspective} /><section className="trends-heading"><div><p className="kicker">OPINION TRENDS</p><h1>See every move.</h1><p>Sign in for your history, or choose All Voters.</p></div></section><SignInGate /></main>;
+  if (state === "empty" || !list) return <main className="trends-page shell"><PerspectiveToggle value={perspective} onChange={setPerspective} /><section className="trends-heading"><div><p className="kicker">OPINION TRENDS</p><h1>{perspective === "mine" ? "Your first line starts here." : "Community history starts with a vote."}</h1><p>{perspective === "mine" ? "Publish a period-based ranking to begin your history." : "No public period-based rankings are available yet."}</p><Link className="button button-primary" href="/consensus">Find a poll</Link></div></section></main>;
 
   return <main className="trends-page shell">
     <section className="trends-heading">
       <div><p className="kicker">OPINION TRENDS</p><h1>See every move.</h1><p>Choose a list. Compare any options.</p></div>
-      <label><span>Ranking list</span><select value={list.templateVersionId} onChange={(event) => chooseList(event.target.value)}>{lists.map((item) => <option key={item.templateVersionId} value={item.templateVersionId}>{item.title}</option>)}</select></label>
+      <div className="trend-heading-controls"><PerspectiveToggle value={perspective} onChange={setPerspective} /><label><span>Ranking list</span><select value={list.templateVersionId} onChange={(event) => chooseList(event.target.value)}>{lists.map((item) => <option key={item.templateVersionId} value={item.templateVersionId}>{item.title}</option>)}</select></label></div>
     </section>
 
     <section className="trend-workspace">
       <header className="trend-workspace-header">
-        <div><span>{list.responseCadence === "weekly" ? "WEEKLY HISTORY" : list.responseCadence === "seasonal" ? "SEASON HISTORY" : "RANKING HISTORY"}</span><h2>{list.title}</h2></div>
+        <div><span>{perspective === "mine" ? "MY " : "ALL VOTERS · "}{list.responseCadence === "weekly" ? "WEEKLY HISTORY" : list.responseCadence === "seasonal" ? "SEASON HISTORY" : "RANKING HISTORY"}</span><h2>{list.title}</h2></div>
         <div><strong>{list.snapshots.length}</strong><span>{list.snapshots.length === 1 ? "period" : "periods"}</span></div>
       </header>
       <div className="trend-layout">

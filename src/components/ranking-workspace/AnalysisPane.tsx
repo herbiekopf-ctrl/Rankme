@@ -1,13 +1,39 @@
 "use client";
 
+import { useMemo, type CSSProperties } from "react";
 import { ComparisonTool } from "../ComparisonTool";
+import { MetricInfo } from "../MetricInfo";
 import { TeamMark } from "../TeamMark";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
+import { calculateCustomMetricScores, formatMetricValue, metricDesirability, metricHeatPresentation, metricPopulation, rankByMetric } from "@/lib/domain/metrics";
 import { formatAttribute } from "@/lib/utils";
 
 export function AnalysisPane({ controller }: { controller: RankingWorkspaceController }) {
   const { analysisMode, candidates, compareIds, dataset, history, template } = controller;
   const hasMetrics = Boolean(dataset.metricDefinitions?.length);
+  const activeMetric = dataset.metricDefinitions?.find((metric) => metric.key === controller.candidateSort);
+  const activeCustomMetric = controller.candidateSort.startsWith("custom:")
+    ? controller.customMetrics.metrics.find((metric) => metric.id === controller.candidateSort.slice(7))
+    : undefined;
+  const candidateSignals = useMemo(() => {
+    if (activeMetric) {
+      const population = metricPopulation(dataset.entities, activeMetric.key);
+      return new Map(rankByMetric(dataset.entities, activeMetric).map((item) => {
+        const heat = metricHeatPresentation(metricDesirability(item.value, population, activeMetric.direction));
+        return [item.entity.id, { label: activeMetric.label, value: formatMetricValue(item.value, activeMetric), rank: item.rank, heat }];
+      }));
+    }
+    if (activeCustomMetric) {
+      const scores = calculateCustomMetricScores(dataset.entities, dataset.metricDefinitions ?? [], activeCustomMetric.formula);
+      const sorted = [...dataset.entities].sort((left, right) => (scores.get(right.id) ?? -1) - (scores.get(left.id) ?? -1));
+      return new Map(sorted.map((entity, index) => {
+        const value = scores.get(entity.id) ?? null;
+        const heat = metricHeatPresentation(value == null ? null : value / 100);
+        return [entity.id, { label: activeCustomMetric.name, value: value == null ? "No data" : value.toFixed(1), rank: value == null ? 0 : index + 1, heat }];
+      }));
+    }
+    return new Map();
+  }, [activeCustomMetric, activeMetric, dataset.entities, dataset.metricDefinitions]);
 
   return (
     <section
@@ -36,7 +62,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             disabled={!hasMetrics}
             onClick={() => controller.setAnalysisMode("compare")}
           >Compare{compareIds.length ? ` (${compareIds.length})` : ""}</button>
-          <button type="button" role="tab" aria-selected={analysisMode === "metric-builder"} className={analysisMode === "metric-builder" ? "is-active" : ""} disabled={!hasMetrics} onClick={() => controller.setAnalysisMode("metric-builder")}>+ Metric</button>
+          <button type="button" role="tab" aria-selected={analysisMode === "metric-builder"} className={analysisMode === "metric-builder" ? "is-active" : ""} disabled={!hasMetrics} onClick={() => controller.setAnalysisMode("metric-builder")}>Live Model</button>
         </div>
       </div>
 
@@ -51,6 +77,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             onSelectedIdsChange={controller.setCompareIds}
             onOpenEntity={controller.setDetailId}
             onAddEntity={controller.addEntity}
+            onFocusRankedEntity={controller.focusRankedEntity}
             onClose={() => controller.setAnalysisMode("candidates")}
           />
         ) : (
@@ -85,6 +112,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                       ))}
                       {controller.customMetrics.metrics.map((metric) => <option key={metric.id} value={`custom:${metric.id}`}>My Metrics · {metric.name}</option>)}
                     </select>
+                    {activeMetric && <MetricInfo metric={activeMetric} compact />}
                   </label>
                 )}
                 <span className="rw-candidate-count">{candidates.length} eligible</span>
@@ -92,8 +120,9 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             </div>
 
             <div className="candidate-list rw-candidate-list">
-              {candidates.map((entity) => (
-                <article className="candidate-card" key={entity.id}>
+              {candidates.map((entity) => {
+                const signal = candidateSignals.get(entity.id);
+                return <article className="candidate-card" key={entity.id}>
                   <TeamMark entity={entity} />
                   <div className="candidate-identity">
                     <strong>{entity.name}</strong>
@@ -102,6 +131,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                     )}
                     {entity.attributes.suggestion && <small>{formatAttribute(entity.attributes.suggestion)}</small>}
                   </div>
+                  {signal && <div className={`candidate-metric-signal heat-${signal.heat.band}`} style={{ "--heat-bg": signal.heat.background, "--heat-border": signal.heat.border, "--heat-fg": signal.heat.foreground } as CSSProperties}><span>{signal.label}</span><strong>{signal.rank ? `#${signal.rank}` : "—"}</strong><small>{signal.value} · {signal.heat.label}</small></div>}
                   <div className="candidate-actions">
                     <button type="button" className="details" onClick={() => controller.setDetailId(entity.id)} aria-label={`Open ${entity.name} details`} title={`Open ${entity.name} details`}>Stats</button>
                     {hasMetrics && (
@@ -122,8 +152,8 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                       title="Add to ranking"
                     >+ Rank</button>
                   </div>
-                </article>
-              ))}
+                </article>;
+              })}
               {!candidates.length && (
                 <div className="no-results">
                   <strong>No eligible match.</strong>

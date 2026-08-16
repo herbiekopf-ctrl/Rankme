@@ -1,8 +1,9 @@
 import type { RankableEntity } from "./types";
+import { resolveConferenceMedia } from "./conferenceMedia";
 
 export type EntityMediaPresentation = {
   kind: "image" | "initials";
-  role: "canonical-team-mark" | "related-team-mark" | "fallback";
+  role: "canonical-team-mark" | "canonical-entity-mark" | "related-team-mark" | "fallback";
   imageUrl?: string;
   initials: string;
   backgroundColor?: string;
@@ -31,6 +32,10 @@ function relatedTeamName(entity: RankableEntity): string | undefined {
 
 export function resolveEntityMedia(entity: RankableEntity): EntityMediaPresentation {
   const fallback = initials(entity);
+  const conferenceMedia = entity.entityType === "conference" ? resolveConferenceMedia(entity.name) : null;
+  if (conferenceMedia) {
+    return { kind: "image", role: "canonical-entity-mark", imageUrl: entity.imageUrl ?? conferenceMedia.imageUrl, initials: fallback, backgroundColor: entity.color ?? conferenceMedia.color };
+  }
   if (!entity.imageUrl) {
     return { kind: "initials", role: "fallback", initials: fallback, backgroundColor: entity.color };
   }

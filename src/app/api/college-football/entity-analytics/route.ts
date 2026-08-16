@@ -13,15 +13,25 @@ export async function GET(request: Request) {
   const client = createAdminSupabaseClient();
   if (!client) return NextResponse.json({ error: "Analytics unavailable" }, { status: 503 });
   try {
-    const { data: dataset } = await client.from("datasets").select("active_version_id").eq("slug", `college-football-${season}`).maybeSingle();
-    if (!dataset?.active_version_id) return NextResponse.json({ entityId, season, games: [] } satisfies EntityAnalyticsSnapshot);
+    const { data: dataset } = await client.from("datasets").select("id").eq("slug", "cfbd-season").maybeSingle();
+    if (!dataset?.id) return NextResponse.json({ entityId, season, games: [] } satisfies EntityAnalyticsSnapshot);
+    const { data: version } = await client
+      .from("dataset_versions")
+      .select("id")
+      .eq("dataset_id", dataset.id)
+      .eq("season", season)
+      .in("status", ["published", "superseded"])
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!version?.id) return NextResponse.json({ entityId, season, games: [] } satisfies EntityAnalyticsSnapshot);
     const { data: relationships, error: relationshipError } = await client.from("entity_relationships").select("from_entity_id,relationship_type").eq("to_entity_id", entityId).in("relationship_type", ["home-team", "away-team"]);
     if (relationshipError) throw relationshipError;
     const gameIds = relationships.map((row) => row.from_entity_id);
     if (!gameIds.length) return NextResponse.json({ entityId, season, games: [] } satisfies EntityAnalyticsSnapshot);
     const [entitiesResult, valuesResult] = await Promise.all([
       client.from("entities").select("id,name").in("id", gameIds),
-      client.from("entity_attribute_values").select("entity_id,text_value,number_value,boolean_value,attribute_definitions!inner(key)").eq("dataset_version_id", dataset.active_version_id).in("entity_id", gameIds),
+      client.from("entity_attribute_values").select("entity_id,text_value,number_value,boolean_value,attribute_definitions!inner(key)").eq("dataset_version_id", version.id).in("entity_id", gameIds),
     ]);
     if (entitiesResult.error) throw entitiesResult.error;
     if (valuesResult.error) throw valuesResult.error;
@@ -33,7 +43,7 @@ export async function GET(request: Request) {
       attributes.set(row.entity_id, { ...(attributes.get(row.entity_id) ?? {}), [definition.key]: value });
     }
     const relationshipByGame = new Map(relationships.map((row) => [row.from_entity_id, row.relationship_type]));
-    const games: EntityGameSnapshot[] = entitiesResult.data.map((game): EntityGameSnapshot => {
+    const games: EntityGameSnapshot[] = entitiesResult.data.filter((game) => attributes.has(game.id)).map((game): EntityGameSnapshot => {
       const data = attributes.get(game.id) ?? {};
       const isHome = relationshipByGame.get(game.id) === "home-team";
       const homeTeam = String(data.homeTeam ?? ""); const awayTeam = String(data.awayTeam ?? "");

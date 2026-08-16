@@ -37,6 +37,7 @@ export function useRankingWorkspace({
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("candidates");
   const [mobileMode, setMobileMode] = useState<MobileWorkspaceMode>("ranking");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [focusedRankId, setFocusedRankId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishError, setPublishError] = useState("");
@@ -53,6 +54,7 @@ export function useRankingWorkspace({
   const [periodLoadError, setPeriodLoadError] = useState("");
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusTimer = useRef<number | null>(null);
   const storageKey = `ranked:draft:${template.id}`;
   const customMetrics = useCustomMetrics(template.entityType, isPermanentRankedUser(rankedUser));
 
@@ -237,6 +239,21 @@ export function useRankingWorkspace({
     setMobileMode("analyze");
   }, []);
 
+  const focusRankedEntity = useCallback((entityId: string) => {
+    if (!rankedSet.has(entityId)) return;
+    setMobileMode("ranking");
+    setFocusedRankId(entityId);
+    if (focusTimer.current) clearTimeout(focusTimer.current);
+    window.setTimeout(() => {
+      document.querySelector<HTMLElement>(`[data-ranked-entity-id="${CSS.escape(entityId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 40);
+    focusTimer.current = window.setTimeout(() => setFocusedRankId(null), 1800);
+  }, [rankedSet]);
+
+  useEffect(() => () => {
+    if (focusTimer.current) clearTimeout(focusTimer.current);
+  }, []);
+
   const customQuery = effectiveConfig ? `&config=${encodeCustomPollConfig(effectiveConfig)}` : "";
   const sharePath = `/ballot/${customConfig ? "custom-poll" : "preseason-2026"}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
 
@@ -263,7 +280,7 @@ export function useRankingWorkspace({
       await publishPersistedRanking(rankingId);
       router.push(sharePath);
     } catch (reason) {
-      setPublishError(reason instanceof Error ? reason.message : "The relational ballot could not be published.");
+      setPublishError(reason instanceof Error ? reason.message : "Your ranking could not be published.");
       setPublishing(false);
     }
   }, [canEditPeriod, dataset, effectiveConfig, history.present, router, sharePath, template]);
@@ -293,6 +310,8 @@ export function useRankingWorkspace({
     setMobileMode,
     detailEntity,
     setDetailId,
+    focusedRankId,
+    focusRankedEntity,
     publishOpen,
     setPublishOpen,
     copied,

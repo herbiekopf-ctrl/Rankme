@@ -23,7 +23,7 @@ export function LiveAffinityQuery() {
   const [ageBand, setAgeBand] = useState("");
   const [experience, setExperience] = useState("");
   const [result, setResult] = useState<AffinityResult | null>(null);
-  const [status, setStatus] = useState("Loading public relational polls…");
+  const [status, setStatus] = useState("Loading public polls…");
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function LiveAffinityQuery() {
       setAnchorVersion(first?.templateVersionId ?? "");
       setCompareVersion(second?.templateVersionId ?? "");
       setAnchorEntity(first?.entities[0]?.id ?? "");
-    }).catch(() => setStatus("The relational catalog is unavailable."));
+    }).catch(() => setStatus("Public polls are unavailable."));
   }, []);
 
   const anchorTemplate = useMemo(() => catalog?.templates.find((template) => template.templateVersionId === anchorVersion), [anchorVersion, catalog]);
@@ -50,14 +50,14 @@ export function LiveAffinityQuery() {
   async function runQuery() {
     if (!anchorVersion || !compareVersion || !anchorEntity) return;
     setRunning(true);
-    setStatus("Running the privacy-gated Supabase function…");
+    setStatus("Comparing privacy-safe voter groups…");
     try {
       const filters = Object.fromEntries(Object.entries({ geography: region, age_band: ageBand, experience }).filter(([, value]) => value));
       const response = await fetch("/api/insights/affinity", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ anchorTemplateVersionId: anchorVersion, anchorEntityId: anchorEntity, anchorMaxPosition: maxPosition, compareTemplateVersionId: compareVersion, filters }) });
       const body = await response.json() as AffinityResult & { error?: string };
       if (!response.ok) throw new Error(body.error ?? "The live query failed.");
       setResult(body);
-      setStatus(body.suppressed ? "The query ran, but the eligible cohort is below the privacy floor." : "Live aggregate returned from Supabase.");
+      setStatus(body.suppressed ? "This group is below the privacy floor." : "Community comparison ready.");
     } catch (reason) {
       setStatus(reason instanceof Error ? reason.message : "The live query failed.");
     } finally {
@@ -67,7 +67,7 @@ export function LiveAffinityQuery() {
 
   return (
     <section className="live-affinity-card shell">
-      <div className="live-affinity-heading"><div><p className="kicker">LIVE DATABASE QUERY</p><h2>Ask the real opinion graph.</h2><p>This panel calls the server-only Supabase affinity function. It never substitutes preview numbers.</p></div><span className={catalog?.connected ? "data-badge is-live" : "data-badge"}>{catalog?.connected ? "Supabase connected" : "Setup needed"}</span></div>
+      <div className="live-affinity-heading"><div><p className="kicker">COMMUNITY VIEW</p><h2>Compare how groups rank.</h2><p>Only privacy-safe aggregate results are shown.</p></div><span className={catalog?.connected ? "data-badge is-live" : "data-badge"}>{catalog?.connected ? "Ready" : "Setup needed"}</span></div>
       {catalog?.templates.length ? <><div className="live-query-grid">
         <label><span>Anchor poll</span><select value={anchorVersion} onChange={(event) => chooseAnchorTemplate(event.target.value)}>{catalog.templates.map((template) => <option key={template.templateVersionId} value={template.templateVersionId}>{template.title}</option>)}</select></label>
         <label><span>People who ranked</span><select value={anchorEntity} onChange={(event) => setAnchorEntity(event.target.value)}>{anchorTemplate?.entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></label>

@@ -414,6 +414,159 @@ a.template-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); 
   .rw-detail-grid { grid-template-columns: 1fr; }
 }
 
+/* Phase 4: direction-aware metrics, dense mobile analysis, and profile context */
+.metric-info { position: relative; display: inline-block; margin-left: 5px; vertical-align: middle; }
+.metric-info summary { position: relative; width: 17px; height: 17px; display: inline-grid; place-items: center; padding: 0; border: 1px solid #aebbb3; border-radius: 50%; cursor: pointer; color: #52675b; background: rgba(255,255,255,.78); font: 800 9px/1 system-ui,sans-serif; list-style: none; }
+.metric-info summary::after { content: ""; position: absolute; inset: -7px; }
+.metric-info summary::-webkit-details-marker { display: none; }
+.metric-info-popover { position: absolute; z-index: 30; top: calc(100% + 7px); left: 0; width: min(260px,80vw); display: grid; gap: 5px; padding: 11px; color: #263d31; background: #fffef9; border: 1px solid #bdc7c0; border-radius: 9px; box-shadow: 0 14px 40px rgba(8,25,16,.18); text-align: left; text-transform: none; letter-spacing: 0; }
+.metric-info-popover p { margin: 0; color: #596a60; font-size: 10px; line-height: 1.45; }
+.metric-info-popover span, .metric-info-popover small { color: #6c7a72; font-size: 8px; font-weight: 750; }
+.metric-info.is-compact summary { width: 15px; height: 15px; font-size: 8px; }
+
+.heat-cell, .candidate-metric-signal, .comparison-mobile-metric, .analytics-card-metrics > div, .metric-model-signals > span, .metric-overlay .custom-metric-preview output[class*="heat-"] { color: var(--heat-fg); background: var(--heat-bg); border-color: var(--heat-border); }
+.heatmap-table .heat-cell { background: var(--heat-bg); box-shadow: inset 0 0 0 1px var(--heat-border); }
+.heatmap-table .heat-cell strong, .heatmap-table .heat-cell small { display: block; color: inherit; }
+.heatmap-table .heat-cell small { margin-top: 3px; font-size: 8px; white-space: nowrap; }
+.heatmap-table thead th > span { display: flex; align-items: center; gap: 3px; }
+.movement-positive { color: #176743 !important; }
+.movement-negative { color: #a2433b !important; }
+.movement-neutral { color: #6e7772 !important; }
+
+.comparison-entity-search { width: min(330px,100%); height: 38px; display: grid; grid-template-columns: 30px 1fr; align-items: center; margin-bottom: 8px; padding: 0 7px; background: #fff; border: 1px solid var(--line); border-radius: 7px; }
+.comparison-entity-search > span { color: #75827a; text-align: center; }
+.comparison-entity-search input { min-width: 0; border: 0; outline: 0; background: transparent; font-size: 10px; }
+.comparison-mobile-stack { display: none; }
+.compact-rank-action.is-ranked { color: #205b40; background: #fff; border-color: #95b9a4; }
+
+.candidate-metric-signal { min-width: 92px; display: grid; grid-template-columns: 1fr auto; gap: 1px 6px; padding: 5px 7px; border: 1px solid; border-radius: 7px; }
+.candidate-metric-signal span { grid-column: 1; overflow: hidden; font-size: 7px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+.candidate-metric-signal strong { grid-column: 2; grid-row: 1 / 3; align-self: center; font-family: Georgia,serif; font-size: 13px; }
+.candidate-metric-signal small { grid-column: 1; font-size: 7px; white-space: nowrap; }
+.ranked-card.is-focused { animation: ranked-focus 1.7s ease; }
+@keyframes ranked-focus { 0%,100% { box-shadow: 0 2px 7px rgba(15,35,23,.03); } 18%,68% { border-color: #d4a52e; box-shadow: 0 0 0 3px rgba(225,173,46,.28), 0 12px 30px rgba(15,35,23,.12); transform: translateX(3px); } }
+
+.analytics-card-metrics > div { position: relative; grid-template-columns: minmax(0,1fr) auto; gap: 2px 8px; padding: 8px; border: 1px solid; border-radius: 8px; }
+.analytics-card-metrics > div > span { display: flex; align-items: center; min-width: 0; }
+.analytics-card-metrics > div > strong { font-family: Georgia,serif; font-size: 17px; }
+.analytics-card-metrics > div > small { color: inherit; font-size: 8px; }
+.analytics-card-metrics > div > b { grid-column: 1 / -1; font-size: 8px; }
+
+.metric-mobile-sections { display: none; }
+.metric-model-team b { font-size: 7px; font-weight: 850; }
+.metric-overlay .custom-metric-preview output[class*="heat-"] { min-width: 43px; display: grid; place-items: center; gap: 1px; padding: 4px; border: 1px solid; border-radius: 6px; font-weight: 900; }
+.metric-overlay .custom-metric-preview output small { color: inherit; font-size: 6px; font-weight: 800; }
+.metric-model-signals { grid-column: 4 / -1; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+.metric-model-signals > span { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1px 4px; padding: 3px 5px; border: 1px solid; border-radius: 5px; }
+.metric-model-signals small { overflow: hidden; color: inherit; font-size: 6px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.metric-model-signals strong { color: inherit; font-size: 8px; }
+.metric-model-signals em { overflow: hidden; color: inherit; font-size: 6px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.metric-model-signals b { color: inherit; font-size: 6px; }
+.metric-overlay .custom-metric-preview li { min-height: 76px; }
+.metric-input-title { min-width: 0; display: flex; align-items: center; }
+.metric-input-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.affiliation-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.affiliation-field > div { min-height: 46px; display: flex; align-items: center; gap: 8px; }
+.affiliation-field select { min-width: 0; flex: 1; }
+
+.trend-heading-controls { width: min(410px,100%); display: grid; gap: 8px; }
+.trend-heading-controls > label { display: grid; gap: 6px; color: #68766e; font-size: 8px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
+.trend-heading-controls select { width: 100%; }
+.trend-perspective-toggle { width: max-content; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: #e6e7e1; border: 1px solid #d0d4cf; border-radius: 9px; }
+.trend-perspective-toggle button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 6px; cursor: pointer; color: #607067; background: transparent; font-size: 9px; font-weight: 850; }
+.trend-perspective-toggle button.is-active { color: #fff; background: var(--green-2); box-shadow: 0 2px 7px rgba(8,25,16,.15); }
+.trends-page > .trend-perspective-toggle { margin-bottom: 18px; }
+
+@media (max-width: 700px) {
+  .comparison-desktop-table { display: none; }
+  .comparison-mobile-stack { display: grid; gap: 8px; }
+  .comparison-tool { padding: 14px 9px 92px; }
+  .comparison-topline { gap: 10px; }
+  .comparison-topline h2 { font-size: 19px; }
+  .comparison-topline > div > p:last-child { font-size: 9px; }
+  .comparison-entity-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); max-height: 145px; overflow: auto; gap: 4px; padding-bottom: 6px; }
+  .comparison-entity-picker label { min-width: 0; border-radius: 7px; padding: 4px 5px; }
+  .comparison-entity-picker label > span { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+  .comparison-entity-picker .mark-small { width: 25px; height: 25px; }
+  .comparison-metric-picker { margin-bottom: 8px; }
+  .comparison-metric-picker > div { max-height: 64px; overflow: auto; }
+  .comparison-mobile-card { overflow: hidden; background: #fffef9; border: 1px solid #d3d6d0; border-radius: 9px; }
+  .comparison-mobile-card > header { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; }
+  .comparison-mobile-card > header > button:first-child { min-width: 0; display: flex; align-items: center; gap: 7px; padding: 0; border: 0; cursor: pointer; background: transparent; text-align: left; }
+  .comparison-mobile-card > header > button:first-child > span { min-width: 0; display: grid; }
+  .comparison-mobile-card > header strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .comparison-mobile-card > header small { color: var(--muted); font-size: 8px; }
+  .comparison-mobile-card > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px; padding: 0 6px 6px; }
+  .comparison-mobile-metric { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 1px 5px; padding: 6px; border: 1px solid; border-radius: 6px; }
+  .comparison-mobile-metric > span { min-width: 0; display: flex; align-items: center; overflow: hidden; font-size: 7px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+  .comparison-mobile-metric > strong { grid-row: 1 / 3; grid-column: 2; align-self: center; font-family: Georgia,serif; font-size: 14px; }
+  .comparison-mobile-metric > small { overflow: hidden; color: inherit; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
+  .comparison-mobile-metric > b { grid-column: 1 / -1; font-size: 7px; }
+  .metric-info-popover { position: fixed; z-index: 120; left: 12px; right: 12px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); width: auto; }
+}
+
+@media (max-width: 760px) {
+  .metric-mobile-sections { flex: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; padding: 5px; background: #e8e8e1; border-bottom: 1px solid var(--line); }
+  .metric-mobile-sections button { min-height: 36px; border: 0; border-radius: 6px; cursor: pointer; color: #617068; background: transparent; font-size: 9px; font-weight: 900; }
+  .metric-mobile-sections button.is-active { color: #fff; background: var(--green-2); }
+  .metric-mobile-sections span { margin-left: 4px; opacity: .72; }
+  .metric-overlay-layout { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .metric-builder-controls, .metric-current-ranking, .metric-overlay .custom-metric-preview { display: none; }
+  .metric-builder-controls.is-mobile-active { min-height: 0; flex: 1; display: block; overflow: auto; padding: 10px; border: 0; }
+  .metric-current-ranking.is-mobile-active { height: 69px; flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 9px; overflow: hidden; border: 0; border-bottom: 1px solid var(--line); }
+  .metric-current-ranking > div { align-content: center; display: grid; }
+  .metric-current-ranking .kicker { margin: 0; }
+  .metric-current-ranking h4 { font-size: 16px; }
+  .metric-current-ranking ol { display: flex; gap: 4px; overflow-x: auto; }
+  .metric-current-ranking li { min-width: 120px; min-height: 53px; grid-template-columns: 19px 28px minmax(0,1fr); gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; }
+  .metric-current-ranking .mark-small { width: 27px; height: 27px; }
+  .metric-overlay .custom-metric-preview.is-mobile-active { min-height: 0; height: auto; flex: 1; display: flex; }
+  .metric-preview-heading { padding: 7px 9px 4px; }
+  .metric-preview-heading h4 { font-size: 17px; }
+  .metric-preview-actions { padding: 0 9px 6px; }
+  .metric-overlay .custom-metric-preview ol { padding: 0 5px 8px; }
+  .metric-overlay .custom-metric-preview li { min-height: 76px; grid-template-columns: 23px 20px 29px minmax(0,1fr) 40px 48px; gap: 4px; padding: 4px 2px; }
+  .metric-overlay .custom-metric-preview .mark-small { width: 28px; height: 28px; }
+  .metric-model-team strong { font-size: 9px; }
+  .metric-model-team small { font-size: 7px; }
+  .metric-model-signals { grid-column: 4 / -1; }
+  .metric-overlay .custom-metric-actions { position: static; }
+  .metric-builder-controls .custom-metric-name { margin-bottom: 8px; }
+  .custom-metric-discovery { margin-bottom: 8px; }
+  .custom-metric-discovery > div { max-height: 35px; overflow-x: auto; flex-wrap: nowrap; }
+  .metric-builder-controls .custom-metric-inputs { gap: 4px; }
+  .metric-builder-controls .custom-metric-inputs label { min-height: 45px; grid-template-columns: minmax(0,1fr) 90px 38px; gap: 6px; padding: 5px 7px; }
+  .custom-metric-inputs .metric-input-title strong { font-size: 9px; }
+  .custom-metric-inputs label > span small { font-size: 7px; }
+}
+
+@media (max-width: 560px) {
+  .affiliation-fields { grid-template-columns: 1fr; }
+  .trend-heading-controls, .trend-perspective-toggle { width: 100%; }
+  .trend-perspective-toggle button { padding-inline: 7px; }
+}
+
+@media (max-width: 420px) {
+  .rw-ranking-pane .ranked-card { min-height: 49px; grid-template-columns: 24px 22px 30px minmax(0,1fr) auto; padding: 3px 4px; }
+  .rw-ranking-pane .mark-medium { width: 29px; height: 29px; }
+  .rw-ranking-pane .ranked-identity div span:nth-child(n+2) { display: none; }
+  .rw-ranking-pane .rank-controls button:not(.rank-compare):not(:last-child) { display: none; }
+  .rw-ranking-pane .rank-controls button { width: 38px; height: 38px; }
+  .rw-ranking-pane .drag-handle { width: 32px; height: 40px; margin-left: -4px; }
+  .rw-ranking-pane .rank-number { font-size: 16px; }
+  .rw-analysis-pane .candidate-card { min-height: 63px; display: grid; grid-template-columns: 31px minmax(0,1fr) auto; gap: 3px 7px; }
+  .rw-analysis-pane .candidate-card > .mark-medium { grid-row: 1 / 3; width: 30px; height: 30px; }
+  .rw-analysis-pane .candidate-identity { grid-column: 2; }
+  .rw-analysis-pane .candidate-metric-signal { grid-column: 2; min-width: 0; width: min(135px,100%); padding: 3px 5px; }
+  .rw-analysis-pane .candidate-actions { grid-column: 3; grid-row: 1 / 3; }
+  .rw-analysis-pane .candidate-actions button { min-width: 36px; width: 36px; min-height: 38px; padding: 0; font-size: 0; }
+  .rw-analysis-pane .candidate-actions .details::after { content: "i"; font-size: 10px; }
+  .rw-analysis-pane .candidate-actions .compare::after { content: "⇄"; font-size: 12px; }
+  .rw-analysis-pane .candidate-actions .add-candidate { width: 46px; font-size: 8px; }
+  .analytics-card-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
 /* Published ballot */
 .published-page { min-height: calc(100vh - 78px); padding-bottom: 110px; background: var(--paper); }
 .published-hero { min-height: 245px; display: flex; align-items: center; justify-content: space-between; gap: 40px; }
@@ -1284,4 +1437,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .rw-period-state > b { min-width: 68px; padding-inline: 5px; font-size: 7px; }
   .poll-slip-receipt { grid-template-columns: 1fr; }
   .poll-slip-receipt .button { grid-column: auto; }
+}
+
+/* Keep Phase 4 responsive presentation last in the cascade. */
+.heatmap-table .heat-cell { color: var(--heat-fg); background: var(--heat-bg); box-shadow: inset 0 0 0 1px var(--heat-border); }
+.analytics-card-metrics > div { color: var(--heat-fg); background: var(--heat-bg); border-color: var(--heat-border); grid-template-columns: minmax(0,1fr) auto; gap: 2px 8px; padding: 8px; }
+.analytics-card-metrics > div > span { display: flex; align-items: center; min-width: 0; color: inherit; font-size: 8px; }
+.analytics-card-metrics > div > small { color: inherit; font-size: 8px; }
+.analytics-card-metrics > div > b { grid-column: 1 / -1; font-size: 8px; }
+.metric-overlay .custom-metric-preview li { min-height: 76px; }
+
+@media (max-width: 700px) {
+  .comparison-desktop-table { display: none; }
+  .comparison-mobile-stack { display: grid; gap: 8px; }
+  .comparison-entity-picker { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); max-height: 145px; overflow: auto; gap: 4px; padding-bottom: 6px; }
+  .comparison-entity-picker label { min-width: 0; border-radius: 7px; padding: 4px 5px; }
+  .comparison-entity-picker label > span { overflow: hidden; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+@media (max-width: 760px) {
+  .metric-overlay-layout { min-height: 0; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .metric-builder-controls, .metric-current-ranking, .metric-overlay .custom-metric-preview { display: none; }
+  .metric-builder-controls.is-mobile-active { min-height: 0; flex: 1; display: block; overflow: auto; padding: 10px; border: 0; }
+  .metric-current-ranking.is-mobile-active { height: 69px; flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 8px; padding: 6px 9px; overflow: hidden; border: 0; border-bottom: 1px solid var(--line); }
+  .metric-overlay .custom-metric-preview.is-mobile-active { min-height: 0; height: auto; flex: 1; display: flex; }
+  .metric-overlay .custom-metric-preview li { min-height: 76px; grid-template-columns: 23px 20px 29px minmax(0,1fr) 40px 48px; gap: 4px; padding: 4px 2px; }
+  .metric-model-signals { grid-column: 4 / -1; }
+  .metric-overlay .custom-metric-actions { position: static; }
 }

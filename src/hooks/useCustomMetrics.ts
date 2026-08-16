@@ -13,7 +13,7 @@ export function useCustomMetrics(entityType: string, enabled: boolean) {
     if (!enabled) { setMetrics([]); setLoading(false); return; }
     setLoading(true);
     try { setMetrics(await loadMyCustomMetrics(entityType)); setError(""); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Could not load your metrics."); }
+    catch { setError("Could not load your metrics."); }
     finally { setLoading(false); }
   }, [enabled, entityType]);
 

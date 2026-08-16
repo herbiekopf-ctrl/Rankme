@@ -141,7 +141,7 @@ export function ClassicRankingBuilder({
   }, [candidateSort, conference, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
   const validationErrors = validateRanking(template, history.present);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
-  const sourceBadge = dataset.connected ? "Real CFBD data connected" : "Real data not imported";
+  const sourceBadge = dataset.connected ? "Season data ready" : "Season data unavailable";
   const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
   function commit(next: string[]) {
@@ -199,7 +199,7 @@ export function ClassicRankingBuilder({
       await publishPersistedRanking(rankingId);
       router.push(sharePath);
     } catch (reason) {
-      setPublishError(reason instanceof Error ? reason.message : "The relational ballot could not be published.");
+      setPublishError(reason instanceof Error ? reason.message : "Your ranking could not be published.");
       setPublishing(false);
     }
   }
@@ -215,17 +215,16 @@ export function ClassicRankingBuilder({
         </div>
         <div className="builder-meta">
           <span className={dataset.source === "collegefootballdata" ? "data-badge is-live" : "data-badge"}>{sourceBadge}</span>
-          <small>{dataset.sourceLabel} · {dataset.entities.length} options · updated {timeAgo(dataset.refreshedAt)}</small>
-          {dataset.source === "collegefootballdata" && dataset.upstreamRequests && <small>One shared snapshot · {dataset.upstreamRequests} source calls · zero per-user CFBD calls</small>}
-          {dataset.warnings?.map((warning) => <strong className="stale-warning" key={warning}>{warning}</strong>)}
-          {dataset.stale && <strong className="stale-warning">No invented fallback is shown. Initialize or repair the real-data import.</strong>}
+          <small>{dataset.entities.length} options · updated {timeAgo(dataset.refreshedAt)}</small>
+          {!!dataset.warnings?.length && <strong className="stale-warning">Some season data may still be updating.</strong>}
+          {dataset.stale && <strong className="stale-warning">Season data is unavailable. Try again shortly.</strong>}
         </div>
       </section>
 
       <section className="builder-shell shell">
-        {!dataset.entities.length && <div className="builder-empty-state"><p className="kicker">REAL DATA REQUIRED</p><h2>This ranking has no imported options yet.</h2><p>Run the protected CFBD import. Ranked will not replace missing data with invented teams, players, statistics, or results.</p></div>}
+        {!dataset.entities.length && <div className="builder-empty-state"><p className="kicker">OPTIONS UNAVAILABLE</p><h2>This ranking is still loading.</h2><p>Try again shortly.</p></div>}
         <div className="builder-toolbar">
-          <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : saveState === "cloud" ? "Relational draft saved" : "Local draft saved"}</div>
+          <div className="draft-status"><span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />{saveState === "loading" ? "Opening draft" : saveState === "saving" ? "Saving" : saveState === "cloud" ? "Saved to your account" : "Local draft saved"}</div>
           <div className="toolbar-actions">
             {!!dataset.metricDefinitions?.length && <button className={compareOpen ? "comparison-toggle active" : "comparison-toggle"} onClick={() => setCompareOpen((open) => !open)}>⇄ Compare data</button>}
             <button onClick={undo} disabled={!history.past.length}>↶ Undo</button>
@@ -235,7 +234,20 @@ export function ClassicRankingBuilder({
         </div>
 
         {compareOpen && !!dataset.metricDefinitions?.length && (
-          <ComparisonTool dataset={dataset} selectedIds={compareIds} onSelectedIdsChange={setCompareIds} onClose={() => setCompareOpen(false)} />
+          <ComparisonTool
+            dataset={dataset}
+            selectedIds={compareIds}
+            rankedIds={history.present}
+            canRank={history.present.length < template.maxLength}
+            onSelectedIdsChange={setCompareIds}
+            onOpenEntity={setDetailId}
+            onAddEntity={(entityId) => commit(insertEntity(history.present, entityId, history.present.length, template.maxLength))}
+            onFocusRankedEntity={(entityId) => {
+              setCompareOpen(false);
+              window.setTimeout(() => document.querySelector<HTMLElement>(`[data-ranked-entity-id="${CSS.escape(entityId)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 40);
+            }}
+            onClose={() => setCompareOpen(false)}
+          />
         )}
 
         <div className="builder-grid">
@@ -320,13 +332,13 @@ export function ClassicRankingBuilder({
             <span className="success-mark">✓</span>
             <p className="kicker">BALLOT LOCKED</p>
             <h2 id="publish-title">Your receipts are ready.</h2>
-            <p>This share preview preserves the order and the dataset version used for this draft.</p>
+            <p>This preview preserves the exact order you built.</p>
             <div className="publish-preview">
               {rankedEntities.slice(0, 5).map((entity, index) => <span key={entity.id}><b>{index + 1}</b>{entity.name}</span>)}
               <em>+ {Math.max(0, rankedEntities.length - 5)} more</em>
             </div>
             {authReady && isPermanentRankedUser(rankedUser) ? <div className="publish-actions">
-              <button className="button button-primary" disabled={publishing} onClick={publishRanking}>{publishing ? "Publishing…" : "Publish relational ballot"}</button>
+              <button className="button button-primary" disabled={publishing} onClick={publishRanking}>{publishing ? "Publishing…" : "Publish ranking"}</button>
               <button className="button button-secondary" onClick={copyShareLink}>{copied ? "Copied!" : "Copy preview link"}</button>
             </div> : authReady ? <SignInGate /> : <div className="sign-in-receipt"><strong>Checking your account…</strong></div>}
             {publishError && <p className="creator-error" role="alert">{publishError}</p>}

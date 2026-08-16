@@ -17,12 +17,12 @@ export function CustomRankingLoader({ pollId }: { pollId: string }) {
     Promise.resolve().then(async () => {
       const local = decodeCustomPollConfig(window.localStorage.getItem(`ranked:custom-poll:${pollId}`) ?? undefined);
       const parsed = local ?? await loadPersistedCustomPoll(pollId);
-      if (!parsed) throw new Error("This poll does not exist, is private to another account, or Supabase is not connected.");
+      if (!parsed) throw new Error("This poll does not exist or is private to another account.");
       if (!active) return;
       window.localStorage.setItem(`ranked:custom-poll:${pollId}`, JSON.stringify(parsed));
       setConfig(parsed);
       const response = await fetch(customDatasetUrl(parsed));
-      if (!response.ok) throw new Error("The saved CFBD option list is unavailable.");
+      if (!response.ok) throw new Error("The saved option list is unavailable.");
       const nextDataset = await response.json() as DatasetEnvelope;
       if (nextDataset.entities.length < parsed.length) throw new Error(`Only ${nextDataset.entities.length} matching options are available. Create a new poll with fewer spots.`);
       if (active) setDataset(nextDataset);
