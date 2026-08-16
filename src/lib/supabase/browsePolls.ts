@@ -9,6 +9,18 @@ export type BrowsePollPreview = {
   name: string;
   imageUrl: string | null;
   color: string | null;
+  points: number;
+  averagePosition: number;
+  ballotCount: number;
+};
+
+export type BrowseDemographicFilter = {
+  id: string;
+  label: string;
+  group: string;
+  imageUrl: string | null;
+  color: string | null;
+  entityType: "team" | "conference" | null;
 };
 
 export type BrowsePoll = {
@@ -17,15 +29,31 @@ export type BrowsePoll = {
   title: string;
   description: string | null;
   templateKind: string;
+  templateVersionId: string;
+  cycleId: string | null;
   entityType: string;
   length: number;
   createdAt: string;
   lastResponseAt: string | null;
   responseCount: number;
+  selectedResponseCount: number | null;
+  consensusSuppressed: boolean;
+  minimumCohort: number;
   responseCadence: ResponseCadence;
   periodTitle: string;
   myResponseStatus: RankingResponseStatus;
   preview: BrowsePollPreview[];
+};
+
+type BrowseConsensusResult = {
+  templateVersionId: string;
+  cycleId: string;
+  totalVoterCount: number;
+  selectedVoterCount: number | null;
+  lastResponseAt: string | null;
+  suppressed: boolean;
+  minimumCohort: number;
+  positions: BrowsePollPreview[];
 };
 
 export function browsePollHref(poll: Pick<BrowsePoll, "id" | "slug" | "templateKind">): string {
@@ -47,7 +75,130 @@ export function popularPolls(polls: BrowsePoll[]): BrowsePoll[] {
   return [...polls].sort((left, right) => right.responseCount - left.responseCount || (right.lastResponseAt ?? right.createdAt).localeCompare(left.lastResponseAt ?? left.createdAt));
 }
 
-export async function loadBrowsePolls(): Promise<BrowsePoll[]> {
+export function participatedPolls(polls: BrowsePoll[]): BrowsePoll[] {
+  return recentPolls(polls.filter((poll) => poll.myResponseStatus !== null));
+}
+
+function parseConsensusResult(value: unknown): BrowseConsensusResult | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.templateVersionId !== "string" || typeof row.cycleId !== "string") return null;
+  const positions = Array.isArray(row.positions) ? row.positions.flatMap<BrowsePollPreview>((position) => {
+    if (!position || typeof position !== "object" || Array.isArray(position)) return [];
+    const item = position as Record<string, unknown>;
+    if (typeof item.canonicalKey !== "string" || typeof item.name !== "string" || typeof item.position !== "number") return [];
+    return [{
+      position: item.position,
+      canonicalKey: item.canonicalKey,
+      name: item.name,
+      imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : null,
+      color: typeof item.color === "string" ? item.color : null,
+      points: typeof item.points === "number" ? item.points : 0,
+      averagePosition: typeof item.averagePosition === "number" ? item.averagePosition : 0,
+      ballotCount: typeof item.ballotCount === "number" ? item.ballotCount : 0,
+    }];
+  }) : [];
+  return {
+    templateVersionId: row.templateVersionId,
+    cycleId: row.cycleId,
+    totalVoterCount: typeof row.totalVoterCount === "number" ? row.totalVoterCount : 0,
+    selectedVoterCount: typeof row.selectedVoterCount === "number" ? row.selectedVoterCount : null,
+    lastResponseAt: typeof row.lastResponseAt === "string" ? row.lastResponseAt : null,
+    suppressed: row.suppressed === true,
+    minimumCohort: typeof row.minimumCohort === "number" ? row.minimumCohort : 5,
+    positions,
+  };
+}
+
+async function loadConsensus(
+  targets: Array<{ templateVersionId: string; cycleId: string }>,
+  filterIds: string[],
+): Promise<Map<string, BrowseConsensusResult>> {
+  if (!targets.length) return new Map();
+  const client = getBrowserSupabaseClient();
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (filterIds.length && client) {
+    const { data } = await client.auth.getSession();
+    if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
+  }
+  const response = await fetch("/api/consensus/browse", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ targets, filterIds }),
+  });
+  if (!response.ok) throw new Error("Community consensus could not be loaded.");
+  const body = await response.json() as { results?: unknown[] };
+  const results = (body.results ?? []).map(parseConsensusResult).filter((result): result is BrowseConsensusResult => Boolean(result));
+  return new Map(results.map((result) => [result.templateVersionId, result]));
+}
+
+export async function loadBrowseProfileFilters(): Promise<BrowseDemographicFilter[]> {
+  const client = getBrowserSupabaseClient();
+  if (!client) return [];
+  const user = await getRankedUser(client).catch(() => null);
+  if (!isPermanentRankedUser(user)) return [];
+
+  const [affiliationResult, selectionResult] = await Promise.all([
+    client
+      .from("user_entity_affiliations")
+      .select("entity_id,affiliation_type")
+      .eq("user_id", user.id)
+      .in("affiliation_type", ["favorite", "conference_fan"]),
+    client.from("user_cohort_values").select("cohort_value_id").eq("user_id", user.id),
+  ]);
+  if (affiliationResult.error) throw affiliationResult.error;
+  if (selectionResult.error) throw selectionResult.error;
+
+  const affiliationEntityIds = (affiliationResult.data ?? []).map((row) => row.entity_id);
+  const cohortValueIds = (selectionResult.data ?? []).map((row) => row.cohort_value_id);
+  const [entityResult, valueResult] = await Promise.all([
+    affiliationEntityIds.length
+      ? client.from("entities").select("id,name,image_url,color,entity_types!inner(slug)").in("id", affiliationEntityIds)
+      : Promise.resolve({ data: [], error: null }),
+    cohortValueIds.length
+      ? client.from("cohort_values").select("id,dimension_id,label,slug").in("id", cohortValueIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (entityResult.error) throw entityResult.error;
+  if (valueResult.error) throw valueResult.error;
+  const dimensionIds = [...new Set((valueResult.data ?? []).map((value) => value.dimension_id))];
+  const { data: dimensions, error: dimensionError } = dimensionIds.length
+    ? await client.from("cohort_dimensions").select("id,name,slug,sensitive").in("id", dimensionIds).eq("status", "active")
+    : { data: [], error: null };
+  if (dimensionError) throw dimensionError;
+
+  const entityById = new Map((entityResult.data ?? []).map((entity) => [entity.id, entity]));
+  const dimensionById = new Map((dimensions ?? []).map((dimension) => [dimension.id, dimension]));
+  const filters: BrowseDemographicFilter[] = [];
+  for (const affiliation of affiliationResult.data ?? []) {
+    const entity = entityById.get(affiliation.entity_id);
+    const entityType = Array.isArray(entity?.entity_types) ? entity?.entity_types[0] : entity?.entity_types;
+    if (!entity || (entityType?.slug !== "team" && entityType?.slug !== "conference")) continue;
+    filters.push({
+      id: affiliation.affiliation_type === "favorite" ? "favorite" : "conference_fan",
+      label: `${entity.name} fans`,
+      group: affiliation.affiliation_type === "favorite" ? "Favorite team" : "Conference",
+      imageUrl: entity.image_url,
+      color: entity.color,
+      entityType: entityType.slug,
+    });
+  }
+  for (const value of valueResult.data ?? []) {
+    const dimension = dimensionById.get(value.dimension_id);
+    if (!dimension) continue;
+    filters.push({
+      id: `cohort:${value.id}`,
+      label: value.label,
+      group: dimension.name,
+      imageUrl: null,
+      color: null,
+      entityType: null,
+    });
+  }
+  return filters;
+}
+
+export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowsePoll[]> {
   const client = getBrowserSupabaseClient();
   if (!client) throw new Error("Browse is not connected.");
 
@@ -80,14 +231,7 @@ export async function loadBrowsePolls(): Promise<BrowsePoll[]> {
   const entityTypeById = new Map(entityTypes.map((entityType) => [entityType.id, entityType.slug]));
 
   const versionIds = latestVersions.map((version) => version.id);
-  const [rankingResult, cycleResult, rankedUser] = await Promise.all([
-    client
-      .from("rankings")
-      .select("id,template_version_id,published_at")
-      .in("template_version_id", versionIds)
-      .eq("status", "published")
-      .eq("visibility", "public")
-      .order("published_at", { ascending: false }),
+  const [cycleResult, rankedUser] = await Promise.all([
     client
       .from("ranking_cycles")
       .select("id,template_id,slug,title,opens_at,closes_at,status")
@@ -96,8 +240,6 @@ export async function loadBrowsePolls(): Promise<BrowsePoll[]> {
       .limit(250),
     getRankedUser(client).catch(() => null),
   ]);
-  const { data: rankings, error: rankingError } = rankingResult;
-  if (rankingError) throw rankingError;
   if (cycleResult.error) throw cycleResult.error;
 
   const cyclesData = cycleResult.data ?? [];
@@ -134,59 +276,39 @@ export async function loadBrowsePolls(): Promise<BrowsePoll[]> {
     }
   }
 
-  const responseCountByVersion = new Map<string, number>();
-  const latestRankingByVersion = new Map<string, { id: string; publishedAt: string | null }>();
-  for (const ranking of rankings) {
-    responseCountByVersion.set(ranking.template_version_id, (responseCountByVersion.get(ranking.template_version_id) ?? 0) + 1);
-    if (!latestRankingByVersion.has(ranking.template_version_id)) {
-      latestRankingByVersion.set(ranking.template_version_id, { id: ranking.id, publishedAt: ranking.published_at });
-    }
-  }
-
-  const latestRankingIds = [...latestRankingByVersion.values()].map((ranking) => ranking.id);
-  const previewByRanking = new Map<string, BrowsePollPreview[]>();
-  if (latestRankingIds.length) {
-    const { data: placements, error: placementError } = await client
-      .from("ranking_placements")
-      .select("ranking_id,position,entities(canonical_key,name,image_url,color)")
-      .in("ranking_id", latestRankingIds)
-      .lte("position", 3)
-      .order("position");
-    if (placementError) throw placementError;
-    for (const placement of placements) {
-      const entity = Array.isArray(placement.entities) ? placement.entities[0] : placement.entities;
-      if (!entity) continue;
-      const preview = previewByRanking.get(placement.ranking_id) ?? [];
-      preview.push({
-        position: placement.position,
-        canonicalKey: entity.canonical_key,
-        name: entity.name,
-        imageUrl: entity.image_url,
-        color: entity.color,
-      });
-      previewByRanking.set(placement.ranking_id, preview);
-    }
-  }
+  const consensusByVersion = await loadConsensus(
+    latestVersions.flatMap((version) => {
+      const cycleId = periodByVersion.get(version.id)?.cycleId;
+      return cycleId ? [{ templateVersionId: version.id, cycleId }] : [];
+    }),
+    filterIds,
+  );
 
   return templates.flatMap<BrowsePoll>((template) => {
     const version = latestVersionByTemplate.get(template.id);
     if (!version) return [];
-    const latestRanking = latestRankingByVersion.get(version.id);
+    const period = periodByVersion.get(version.id);
+    const consensus = consensusByVersion.get(version.id);
     return [{
       id: template.id,
       slug: template.slug,
       title: template.title,
       description: template.description,
       templateKind: template.template_kind,
+      templateVersionId: version.id,
+      cycleId: period?.cycleId ?? null,
       entityType: entityTypeById.get(version.entity_type_id) ?? "item",
       length: version.default_length,
       createdAt: template.created_at,
-      lastResponseAt: latestRanking?.publishedAt ?? null,
-      responseCount: responseCountByVersion.get(version.id) ?? 0,
+      lastResponseAt: consensus?.lastResponseAt ?? null,
+      responseCount: consensus?.totalVoterCount ?? 0,
+      selectedResponseCount: consensus?.selectedVoterCount ?? (filterIds.length ? null : 0),
+      consensusSuppressed: consensus?.suppressed ?? false,
+      minimumCohort: consensus?.minimumCohort ?? (filterIds.length ? 5 : 1),
       responseCadence: version.response_cadence as ResponseCadence,
-      periodTitle: periodByVersion.get(version.id)?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, 2026).periodTitle,
+      periodTitle: period?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, 2026).periodTitle,
       myResponseStatus: myStatusByVersion.get(version.id) ?? null,
-      preview: latestRanking ? previewByRanking.get(latestRanking.id) ?? [] : [],
+      preview: consensus?.positions ?? [],
     }];
   });
 }

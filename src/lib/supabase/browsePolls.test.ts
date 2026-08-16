@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browsePollHref, popularPolls, recentPolls, type BrowsePoll } from "./browsePolls";
+import { browsePollHref, participatedPolls, popularPolls, recentPolls, type BrowsePoll } from "./browsePolls";
 
 function poll(overrides: Partial<BrowsePoll>): BrowsePoll {
   return {
@@ -8,11 +8,16 @@ function poll(overrides: Partial<BrowsePoll>): BrowsePoll {
     title: "Poll",
     description: null,
     templateKind: "community",
+    templateVersionId: "version-1",
+    cycleId: "cycle-1",
     entityType: "team",
     length: 10,
     createdAt: "2026-08-01T00:00:00.000Z",
     lastResponseAt: null,
     responseCount: 0,
+    selectedResponseCount: 0,
+    consensusSuppressed: false,
+    minimumCohort: 1,
     responseCadence: "once",
     periodTitle: "One-time poll",
     myResponseStatus: null,
@@ -32,5 +37,12 @@ describe("browse polls", () => {
     const active = poll({ id: "active", lastResponseAt: "2026-08-16T00:00:00.000Z", responseCount: 3 });
     expect(recentPolls([quiet, active]).map((item) => item.id)).toEqual(["active", "quiet"]);
     expect(popularPolls([quiet, active]).map((item) => item.id)).toEqual(["active", "quiet"]);
+  });
+
+  it("keeps only polls the current user has started in their strip", () => {
+    const untouched = poll({ id: "untouched" });
+    const submitted = poll({ id: "submitted", myResponseStatus: "published" });
+    const draft = poll({ id: "draft", myResponseStatus: "draft" });
+    expect(participatedPolls([untouched, submitted, draft]).map((item) => item.id).sort()).toEqual(["draft", "submitted"]);
   });
 });
