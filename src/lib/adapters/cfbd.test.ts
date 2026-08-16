@@ -41,6 +41,16 @@ describe("CFBD adapter", () => {
       "/records": [{ teamId: 228, team: "Clemson", conference: "ACC", total: { games: 1, wins: 1, losses: 0, ties: 0 } }],
       "/games": [{ id: 1, week: 1, completed: true, homeTeam: "Clemson", homePoints: 31, awayTeam: "LSU", awayPoints: 24 }],
       "/roster": [{ id: "7", firstName: "Sammy", lastName: "Receiver", team: "Clemson", position: "WR", jersey: 7, year: 3 }],
+      "/stats/season": [
+        { season: 2026, team: "Clemson", statName: "totalYards", statValue: 420 },
+        { season: 2026, team: "Clemson", statName: "netPassingYards", statValue: 280 },
+        { season: 2026, team: "Clemson", statName: "passAttempts", statValue: 35 },
+        { season: 2026, team: "Clemson", statName: "rushingYards", statValue: 140 },
+        { season: 2026, team: "Clemson", statName: "rushingAttempts", statValue: 35 },
+        { season: 2026, team: "Clemson", statName: "thirdDownConversions", statValue: 6 },
+        { season: 2026, team: "Clemson", statName: "thirdDowns", statValue: 12 },
+      ],
+      "/ratings/fpi": [{ team: "Clemson", fpi: 18.5, efficiencies: { offense: 72, defense: 81, specialTeams: 63 }, resumeRanks: { strengthOfRecord: 7, strengthOfSchedule: 13, remainingStrengthOfSchedule: 22, gameControl: 5 } }],
     };
     const requestSpy = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input));
@@ -60,6 +70,10 @@ describe("CFBD adapter", () => {
     expect(snapshot.towns[0]?.name).toBe("Clemson");
     expect(snapshot.units).toHaveLength(2);
     expect(snapshot.teamSeasons).toHaveLength(1);
+    expect(snapshot.teams[0]?.attributes.yardsPerPlay).toBe(6);
+    expect(snapshot.teams[0]?.attributes.thirdDownPct).toBe(0.5);
+    expect(snapshot.teams[0]?.attributes.strengthOfRecordRank).toBe(7);
+    expect(snapshot.teams[0]?.attributes.fpiOffense).toBe(72);
     expect(Object.keys(snapshot.teams[0]?.attributes ?? {}).some((key) => key.startsWith("advanced:") || key.startsWith("stat:team:") || key.startsWith("usage:"))).toBe(false);
     expect(snapshot.warnings).toEqual([]);
   });

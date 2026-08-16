@@ -99,18 +99,25 @@ export function useRankingWorkspace({
         updatedAt: new Date().toISOString(),
       };
       window.localStorage.setItem(storageKey, JSON.stringify(draft));
-      if (effectiveConfig?.remoteTemplateVersionId && isPermanentRankedUser(rankedUser)) {
-        persistRankingDraft(effectiveConfig, dataset, history.present)
-          .then(() => setSaveState("cloud"))
-          .catch(() => setSaveState("saved"));
-      } else {
-        setSaveState("saved");
-      }
+      if (!isPermanentRankedUser(rankedUser) || history.present.length === 0) return setSaveState("saved");
+      const syncCloud = async () => {
+        if (effectiveConfig) {
+          const remoteConfig = effectiveConfig.remoteTemplateVersionId ? effectiveConfig : await persistCustomPoll(effectiveConfig, dataset);
+          if (remoteConfig !== effectiveConfig) {
+            setEffectiveConfig(remoteConfig);
+            window.localStorage.setItem(`ranked:custom-poll:${remoteConfig.id}`, JSON.stringify(remoteConfig));
+          }
+          await persistRankingDraft(remoteConfig, dataset, history.present);
+        } else {
+          await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
+        }
+      };
+      void syncCloud().then(() => setSaveState("cloud")).catch(() => setSaveState("saved"));
     }, 350);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [dataset, dataset.version, effectiveConfig, history.past.length, history.present, rankedUser, storageKey, template.id, template.version]);
+  }, [dataset, effectiveConfig, history.past.length, history.present, rankedUser, storageKey, template]);
 
   const entitiesById = useMemo(() => new Map(dataset.entities.map((entity) => [entity.id, entity])), [dataset.entities]);
   const rankedEntities = useMemo(
