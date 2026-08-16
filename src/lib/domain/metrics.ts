@@ -1,4 +1,4 @@
-import type { MetricDefinition, RankableEntity } from "./types";
+import type { CustomMetricFormula, MetricDefinition, RankableEntity, UserCustomMetric } from "./types";
 
 export type MetricRank = { entity: RankableEntity; rank: number; value: number | null };
 
@@ -34,4 +34,71 @@ export function formatMetricValue(value: number | null, metric: MetricDefinition
   if (metric.format === "signed") return `${value > 0 ? "+" : ""}${value.toFixed(1)}`;
   if (metric.format === "decimal") return value.toFixed(1);
   return Math.round(value).toLocaleString("en-US");
+}
+
+function percentile(values: number[], value: number): number {
+  if (values.length < 2) return 0.5;
+  let below = 0;
+  let equal = 0;
+  for (const candidate of values) {
+    if (candidate < value) below += 1;
+    else if (candidate === value) equal += 1;
+  }
+  return (below + Math.max(0, equal - 1) / 2) / (values.length - 1);
+}
+
+export function metricDesirability(
+  value: number | null,
+  population: number[],
+  direction: MetricDefinition["direction"],
+): number | null {
+  if (value == null || !population.length) return null;
+  const score = percentile(population, value);
+  return direction === "asc" ? 1 - score : score;
+}
+
+export function metricPopulation(entities: RankableEntity[], key: string): number[] {
+  return entities.flatMap((entity) => {
+    const value = numericMetric(entity, key);
+    return value == null ? [] : [value];
+  });
+}
+
+export function calculateCustomMetricScores(
+  entities: RankableEntity[],
+  definitions: MetricDefinition[],
+  formula: CustomMetricFormula,
+): Map<string, number | null> {
+  const definitionsByKey = new Map(definitions.map((definition) => [definition.key, definition]));
+  const populations = new Map(formula.components.map((component) => [component.metricKey, metricPopulation(entities, component.metricKey)]));
+  return new Map(entities.map((entity) => {
+    let weightedScore = 0;
+    let availableWeight = 0;
+    for (const component of formula.components) {
+      const definition = definitionsByKey.get(component.metricKey);
+      const weight = Math.max(0, component.weight);
+      if (!definition || weight === 0) continue;
+      const score = metricDesirability(numericMetric(entity, component.metricKey), populations.get(component.metricKey) ?? [], definition.direction);
+      if (score == null) continue;
+      weightedScore += score * weight;
+      availableWeight += weight;
+    }
+    return [entity.id, availableWeight ? (weightedScore / availableWeight) * 100 : null];
+  }));
+}
+
+export function customMetricDefinition(metric: Pick<UserCustomMetric, "id" | "name" | "entityType">): MetricDefinition {
+  return {
+    key: `custom:${metric.id}`,
+    label: metric.name,
+    description: "Your weighted metric, calculated from the current dataset.",
+    format: "decimal",
+    direction: "desc",
+    group: "Other",
+    source: "My Metrics",
+    tier: "core",
+    entityType: metric.entityType,
+    available: true,
+    comparative: true,
+  };
 }

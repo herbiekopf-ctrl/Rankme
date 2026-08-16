@@ -13,6 +13,7 @@ export function SortableEntityCard({
   onMove,
   onRemove,
   onCompare,
+  onDetails,
 }: {
   entity: RankableEntity;
   rank: number;
@@ -20,6 +21,7 @@ export function SortableEntityCard({
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
   onCompare?: () => void;
+  onDetails?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entity.id });
   const primary = template.visibleAttributes.slice(0, 2);
@@ -33,7 +35,7 @@ export function SortableEntityCard({
       <span className="rank-number">{rank}</span>
       <TeamMark entity={entity} />
       <div className="ranked-identity">
-        <strong>{entity.name}</strong>
+        <button className="ranked-name-button" onClick={onDetails} disabled={!onDetails}><strong>{entity.name}</strong></button>
         <div>{primary.map((key) => <span key={key}>{formatAttribute(entity.attributes[key])}</span>)}</div>
       </div>
       <div className="rank-controls" aria-label={`Move ${entity.name}`}>

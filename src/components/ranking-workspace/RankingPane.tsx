@@ -59,6 +59,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
                   template={template}
                   onMove={(direction) => controller.moveRankedEntity(entity.id, index + direction)}
                   onRemove={() => controller.removeRankedEntity(entity.id)}
+                  onDetails={() => controller.setDetailId(entity.id)}
                   onCompare={controller.dataset.metricDefinitions?.length ? () => controller.toggleCompare(entity.id) : undefined}
                 />
               ))}

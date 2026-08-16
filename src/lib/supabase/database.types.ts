@@ -778,6 +778,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_custom_metrics: {
+        Row: {
+          created_at: string
+          entity_type_slug: string
+          formula: Json
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type_slug: string
+          formula: Json
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          entity_type_slug?: string
+          formula?: Json
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_custom_metrics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ranking_cycles: {
         Row: {
           closes_at: string | null

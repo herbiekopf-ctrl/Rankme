@@ -6,12 +6,14 @@ import { encodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { emptyRankingHistory, rankingHistoryReducer } from "@/lib/domain/rankingHistory";
 import { encodeRanking, insertEntity, moveEntity, removeEntity, validateRanking } from "@/lib/domain/ranking";
 import type { CustomPollConfig, DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
+import { calculateCustomMetricScores } from "@/lib/domain/metrics";
+import { useCustomMetrics } from "./useCustomMetrics";
 import { entityMatches } from "@/lib/utils";
 import { persistBuiltInRankingDraft, persistCustomPoll, persistRankingDraft, publishPersistedRanking } from "@/lib/supabase/community";
 import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 
-export type AnalysisMode = "candidates" | "compare";
+export type AnalysisMode = "candidates" | "compare" | "metric-builder";
 export type MobileWorkspaceMode = "ranking" | "analyze";
 
 export function useRankingWorkspace({
@@ -44,6 +46,7 @@ export function useRankingWorkspace({
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const storageKey = `ranked:draft:${template.id}`;
+  const customMetrics = useCustomMetrics(template.entityType, isPermanentRankedUser(rankedUser));
 
   useEffect(() => {
     const client = getBrowserSupabaseClient();
@@ -127,6 +130,12 @@ export function useRankingWorkspace({
       && (conference === "All" || entity.attributes.conference === conference),
     );
     if (candidateSort === "name") return options.sort((a, b) => a.name.localeCompare(b.name));
+    if (candidateSort.startsWith("custom:")) {
+      const customMetric = customMetrics.metrics.find((metric) => `custom:${metric.id}` === candidateSort);
+      if (!customMetric) return options;
+      const scores = calculateCustomMetricScores(dataset.entities, dataset.metricDefinitions ?? [], customMetric.formula);
+      return options.sort((a, b) => (scores.get(b.id) ?? -1) - (scores.get(a.id) ?? -1));
+    }
     const metric = dataset.metricDefinitions?.find((definition) => definition.key === candidateSort);
     if (!metric) return options;
     return options.sort((a, b) => {
@@ -136,7 +145,7 @@ export function useRankingWorkspace({
       if (right == null) return -1;
       return metric.direction === "asc" ? left - right : right - left;
     });
-  }, [candidateSort, conference, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
+  }, [candidateSort, conference, customMetrics.metrics, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
 
   const validationErrors = useMemo(() => validateRanking(template, history.present), [history.present, template]);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
@@ -158,7 +167,7 @@ export function useRankingWorkspace({
   const toggleCompare = useCallback((entityId: string) => {
     setCompareIds((current) => current.includes(entityId)
       ? current.filter((value) => value !== entityId)
-      : current.length < 4 ? [...current, entityId] : [...current.slice(1), entityId]);
+      : [...current, entityId]);
     setAnalysisMode("compare");
     setMobileMode("analyze");
   }, []);
@@ -225,6 +234,8 @@ export function useRankingWorkspace({
     publishing,
     authReady,
     canPublishRelational: isPermanentRankedUser(rankedUser),
+    rankedUser,
+    customMetrics,
     validationErrors,
     remaining,
     commit,

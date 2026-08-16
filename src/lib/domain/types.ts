@@ -38,6 +38,49 @@ export type MetricDefinition = {
   comparative?: boolean;
 };
 
+export type CustomMetricComponent = {
+  metricKey: string;
+  weight: number;
+};
+
+export type CustomMetricFormula = {
+  version: 1;
+  normalization: "percentile";
+  components: CustomMetricComponent[];
+};
+
+export type UserCustomMetric = {
+  id: string;
+  userId: string;
+  name: string;
+  entityType: string;
+  formula: CustomMetricFormula;
+  visibility: "private" | "unlisted" | "public";
+  creatorName?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EntityGameSnapshot = {
+  id: string;
+  week: number | null;
+  date: string | null;
+  opponent: string;
+  location: "home" | "away" | "neutral";
+  completed: boolean;
+  result: "W" | "L" | "T" | null;
+  teamScore: number | null;
+  opponentScore: number | null;
+  scoreLabel: string;
+  venue: string | null;
+};
+
+export type EntityAnalyticsSnapshot = {
+  entityId: string;
+  season: number;
+  games: EntityGameSnapshot[];
+};
+
 export type RankingTemplate = {
   id: string;
   version: number;
