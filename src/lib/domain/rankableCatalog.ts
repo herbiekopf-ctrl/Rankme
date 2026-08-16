@@ -96,7 +96,7 @@ export const RANKABLE_CATEGORIES: readonly RankableCategoryDefinition[] = [
     icon: "S",
     defaultLength: 10,
     defaultTitle: "Best College Football Stadiums",
-    visibleAttributes: ["team", "city", "capacity", "constructionYear"],
+    visibleAttributes: ["team", "city", "state", "capacity", "constructionYear", "grass", "dome"],
     filterKeys: ["state", "conference", "dome", "grass"],
     exampleQuestions: ["Best stadium atmospheres", "Toughest places to play", "Best stadium road trips"],
   },

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/clients";
 import { rankableCategory } from "@/lib/domain/rankableCatalog";
+import { curateMetricDefinitions } from "@/lib/domain/metricCatalog";
 import type { DatasetEnvelope, EntityAttributeValue, MetricDefinition, RankingSubject } from "@/lib/domain/types";
 
 type JsonObject = Record<string, unknown>;
@@ -43,6 +44,11 @@ export async function loadSupabaseRankableDataset(year: number, subject: Ranking
   const category = rankableCategory(subject);
   const { data, error } = await client.rpc("get_rankable_dataset", { p_season: year, p_entity_type_slug: category.entityType });
   if (error) throw error;
+  return parseSupabaseRankableDatasetReceipt(data, subject);
+}
+
+export function parseSupabaseRankableDatasetReceipt(data: unknown, subject: RankingSubject): DatasetEnvelope | null {
+  const category = rankableCategory(subject);
   const receipt = object(data);
   if (!receipt) return null;
   const rawEntities = Array.isArray(receipt.entities) ? receipt.entities : [];
@@ -78,6 +84,12 @@ export async function loadSupabaseRankableDataset(year: number, subject: Ranking
       direction: row.direction === "asc" ? "asc" as const : "desc" as const,
       group: METRIC_GROUPS.has(rawGroup) ? rawGroup : "Other" as const,
       source: string(row.source, "CollegeFootballData"),
+      populatedEntityCount: number(row.populatedEntityCount),
+      eligibleEntityCount: number(row.eligibleEntityCount),
+      coverage: number(row.coverage),
+      distinctValueCount: number(row.distinctValueCount),
+      available: row.available !== false,
+      comparative: row.comparative !== false,
     } satisfies MetricDefinition];
   });
   return {
@@ -92,7 +104,7 @@ export async function loadSupabaseRankableDataset(year: number, subject: Ranking
     refreshMode: "saved-snapshot",
     upstreamRequests: number(receipt.sourceRequestCount),
     warnings,
-    metricDefinitions,
+    metricDefinitions: curateMetricDefinitions(category.entityType, metricDefinitions, entities),
     entities,
   };
 }
@@ -102,7 +114,7 @@ export type RelationalCatalogReceipt = {
   refreshedAt: string;
   upstreamRequests: number;
   warnings: string[];
-  categories: Map<string, { count: number; metricCount: number }>;
+  categories: Map<string, { count: number; metricCount: number; populatedMetricCount: number }>;
 };
 
 export async function loadSupabaseCatalogReceipt(year: number): Promise<RelationalCatalogReceipt | null> {
@@ -114,10 +126,14 @@ export async function loadSupabaseCatalogReceipt(year: number): Promise<Relation
   if (!receipt) return null;
   const sourceMetadata = object(receipt.sourceMetadata);
   const warnings = Array.isArray(sourceMetadata?.warnings) ? sourceMetadata.warnings.filter((value): value is string => typeof value === "string") : [];
-  const categories = new Map<string, { count: number; metricCount: number }>();
+  const categories = new Map<string, { count: number; metricCount: number; populatedMetricCount: number }>();
   for (const value of Array.isArray(receipt.categories) ? receipt.categories : []) {
     const row = object(value);
-    if (row && typeof row.entityType === "string") categories.set(row.entityType, { count: number(row.count), metricCount: number(row.metricCount) });
+    if (row && typeof row.entityType === "string") categories.set(row.entityType, {
+      count: number(row.count),
+      metricCount: number(row.metricCount),
+      populatedMetricCount: number(row.populatedMetricCount, number(row.metricCount)),
+    });
   }
   return {
     version: string(receipt.versionKey),
