@@ -4,7 +4,6 @@ import { ComparisonTool } from "../ComparisonTool";
 import { TeamMark } from "../TeamMark";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 import { formatAttribute } from "@/lib/utils";
-import { CustomMetricBuilder } from "./CustomMetricBuilder";
 
 export function AnalysisPane({ controller }: { controller: RankingWorkspaceController }) {
   const { analysisMode, candidates, compareIds, dataset, history, template } = controller;
@@ -19,7 +18,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
       <div className="rw-pane-heading rw-analysis-heading">
         <div>
           <span>ANALYZE / COMPARE</span>
-          <h2 id="analyze-heading">Use data without leaving your ranking</h2>
+          <h2 id="analyze-heading">Pick, sort, compare</h2>
         </div>
         <div className="rw-analysis-tabs" role="tablist" aria-label="Analysis view">
           <button
@@ -28,7 +27,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             aria-selected={analysisMode === "candidates"}
             className={analysisMode === "candidates" ? "is-active" : ""}
             onClick={() => controller.setAnalysisMode("candidates")}
-          >Candidates</button>
+          >Options</button>
           <button
             type="button"
             role="tab"
@@ -37,7 +36,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             disabled={!hasMetrics}
             onClick={() => controller.setAnalysisMode("compare")}
           >Compare{compareIds.length ? ` (${compareIds.length})` : ""}</button>
-          <button type="button" role="tab" aria-selected={analysisMode === "metric-builder"} className={analysisMode === "metric-builder" ? "is-active" : ""} disabled={!hasMetrics} onClick={() => controller.setAnalysisMode("metric-builder")}>Create metric</button>
+          <button type="button" role="tab" aria-selected={analysisMode === "metric-builder"} className={analysisMode === "metric-builder" ? "is-active" : ""} disabled={!hasMetrics} onClick={() => controller.setAnalysisMode("metric-builder")}>+ Metric</button>
         </div>
       </div>
 
@@ -53,8 +52,6 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
             onAddEntity={controller.addEntity}
             onClose={() => controller.setAnalysisMode("candidates")}
           />
-        ) : analysisMode === "metric-builder" && hasMetrics ? (
-          <CustomMetricBuilder controller={controller} />
         ) : (
           <>
             <div className="rw-candidate-controls">
@@ -105,7 +102,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                     {entity.attributes.suggestion && <small>{formatAttribute(entity.attributes.suggestion)}</small>}
                   </div>
                   <div className="candidate-actions">
-                    <button type="button" className="details" onClick={() => controller.setDetailId(entity.id)} aria-label={`Open ${entity.name} details`} title={`Open ${entity.name} details`}>i</button>
+                    <button type="button" className="details" onClick={() => controller.setDetailId(entity.id)} aria-label={`Open ${entity.name} details`} title={`Open ${entity.name} details`}>Stats</button>
                     {hasMetrics && (
                       <button
                         type="button"
@@ -113,7 +110,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                         onClick={() => controller.toggleCompare(entity.id)}
                         aria-label={`Compare ${entity.name}`}
                         title={`Compare ${entity.name}`}
-                      >⇄</button>
+                      >Compare</button>
                     )}
                     <button
                       type="button"
@@ -122,7 +119,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
                       onClick={() => controller.addEntity(entity.id)}
                       aria-label={`Add ${entity.name}`}
                       title="Add to ranking"
-                    >+</button>
+                    >+ Rank</button>
                   </div>
                 </article>
               ))}
