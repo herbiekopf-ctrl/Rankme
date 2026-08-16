@@ -1,6 +1,7 @@
 "use client";
 
 import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "./browser";
+import type { ConsensusFilterSelection } from "@/lib/domain/browseConsensus";
 import { localRankingPeriod, type RankingResponseStatus, type ResponseCadence } from "@/lib/domain/rankingPeriods";
 
 export type BrowsePollPreview = {
@@ -14,13 +15,18 @@ export type BrowsePollPreview = {
   ballotCount: number;
 };
 
-export type BrowseDemographicFilter = {
+export type BrowseDemographicOption = {
   id: string;
   label: string;
-  group: string;
   imageUrl: string | null;
   color: string | null;
   entityType: "team" | "conference" | null;
+};
+
+export type BrowseDemographicCategory = {
+  id: string;
+  label: string;
+  options: BrowseDemographicOption[];
 };
 
 export type BrowsePoll = {
@@ -112,19 +118,19 @@ function parseConsensusResult(value: unknown): BrowseConsensusResult | null {
 
 async function loadConsensus(
   targets: Array<{ templateVersionId: string; cycleId: string }>,
-  filterIds: string[],
+  filters: ConsensusFilterSelection[],
 ): Promise<Map<string, BrowseConsensusResult>> {
   if (!targets.length) return new Map();
   const client = getBrowserSupabaseClient();
   const headers = new Headers({ "Content-Type": "application/json" });
-  if (filterIds.length && client) {
+  if (filters.length && client) {
     const { data } = await client.auth.getSession();
     if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
   }
   const response = await fetch("/api/consensus/browse", {
     method: "POST",
     headers,
-    body: JSON.stringify({ targets, filterIds }),
+    body: JSON.stringify({ targets, filters }),
   });
   if (!response.ok) throw new Error("Community consensus could not be loaded.");
   const body = await response.json() as { results?: unknown[] };
@@ -132,73 +138,94 @@ async function loadConsensus(
   return new Map(results.map((result) => [result.templateVersionId, result]));
 }
 
-export async function loadBrowseProfileFilters(): Promise<BrowseDemographicFilter[]> {
+export async function loadBrowseFilterCatalog(): Promise<BrowseDemographicCategory[]> {
   const client = getBrowserSupabaseClient();
   if (!client) return [];
   const user = await getRankedUser(client).catch(() => null);
   if (!isPermanentRankedUser(user)) return [];
 
-  const [affiliationResult, selectionResult] = await Promise.all([
+  const [affiliationResult, selectionResult, dimensionResult, valueResult, entityResult] = await Promise.all([
     client
       .from("user_entity_affiliations")
       .select("entity_id,affiliation_type")
       .eq("user_id", user.id)
       .in("affiliation_type", ["favorite", "conference_fan"]),
     client.from("user_cohort_values").select("cohort_value_id").eq("user_id", user.id),
+    client
+      .from("cohort_dimensions")
+      .select("id,name,slug,collection_method")
+      .eq("status", "active")
+      .neq("collection_method", "derived")
+      .order("name"),
+    client.from("cohort_values").select("id,dimension_id,label,slug,sort_order").order("sort_order"),
+    client
+      .from("entities")
+      .select("id,name,image_url,color,entity_types!inner(slug)")
+      .in("entity_types.slug", ["team", "conference"])
+      .eq("status", "active")
+      .order("name"),
   ]);
   if (affiliationResult.error) throw affiliationResult.error;
   if (selectionResult.error) throw selectionResult.error;
-
-  const affiliationEntityIds = (affiliationResult.data ?? []).map((row) => row.entity_id);
-  const cohortValueIds = (selectionResult.data ?? []).map((row) => row.cohort_value_id);
-  const [entityResult, valueResult] = await Promise.all([
-    affiliationEntityIds.length
-      ? client.from("entities").select("id,name,image_url,color,entity_types!inner(slug)").in("id", affiliationEntityIds)
-      : Promise.resolve({ data: [], error: null }),
-    cohortValueIds.length
-      ? client.from("cohort_values").select("id,dimension_id,label,slug").in("id", cohortValueIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  if (dimensionResult.error) throw dimensionResult.error;
   if (entityResult.error) throw entityResult.error;
   if (valueResult.error) throw valueResult.error;
-  const dimensionIds = [...new Set((valueResult.data ?? []).map((value) => value.dimension_id))];
-  const { data: dimensions, error: dimensionError } = dimensionIds.length
-    ? await client.from("cohort_dimensions").select("id,name,slug,sensitive").in("id", dimensionIds).eq("status", "active")
-    : { data: [], error: null };
-  if (dimensionError) throw dimensionError;
 
-  const entityById = new Map((entityResult.data ?? []).map((entity) => [entity.id, entity]));
-  const dimensionById = new Map((dimensions ?? []).map((dimension) => [dimension.id, dimension]));
-  const filters: BrowseDemographicFilter[] = [];
-  for (const affiliation of affiliationResult.data ?? []) {
-    const entity = entityById.get(affiliation.entity_id);
-    const entityType = Array.isArray(entity?.entity_types) ? entity?.entity_types[0] : entity?.entity_types;
-    if (!entity || (entityType?.slug !== "team" && entityType?.slug !== "conference")) continue;
-    filters.push({
-      id: affiliation.affiliation_type === "favorite" ? "favorite" : "conference_fan",
-      label: `${entity.name} fans`,
-      group: affiliation.affiliation_type === "favorite" ? "Favorite team" : "Conference",
-      imageUrl: entity.image_url,
-      color: entity.color,
-      entityType: entityType.slug,
+  const affiliationTypes = new Set((affiliationResult.data ?? []).map((row) => row.affiliation_type));
+  const selectedValueIds = new Set((selectionResult.data ?? []).map((row) => row.cohort_value_id));
+  const unlockedDimensionIds = new Set((valueResult.data ?? [])
+    .filter((value) => selectedValueIds.has(value.id))
+    .map((value) => value.dimension_id));
+  const entities = (entityResult.data ?? []).flatMap((entity) => {
+    const type = Array.isArray(entity.entity_types) ? entity.entity_types[0] : entity.entity_types;
+    if (type?.slug !== "team" && type?.slug !== "conference") return [];
+    return [{ id: entity.id, name: entity.name, imageUrl: entity.image_url, color: entity.color, entityType: type.slug }];
+  });
+  const categories: BrowseDemographicCategory[] = [];
+  if (affiliationTypes.has("favorite")) {
+    categories.push({
+      id: "favorite",
+      label: "Favorite team",
+      options: entities.filter((entity) => entity.entityType === "team").map((entity) => ({
+        id: entity.id,
+        label: `${entity.name} fans`,
+        imageUrl: entity.imageUrl,
+        color: entity.color,
+        entityType: "team",
+      })),
     });
   }
-  for (const value of valueResult.data ?? []) {
-    const dimension = dimensionById.get(value.dimension_id);
-    if (!dimension) continue;
-    filters.push({
-      id: `cohort:${value.id}`,
-      label: value.label,
-      group: dimension.name,
-      imageUrl: null,
-      color: null,
-      entityType: null,
+  if (affiliationTypes.has("conference_fan")) {
+    categories.push({
+      id: "conference_fan",
+      label: "Conference affiliation",
+      options: entities.filter((entity) => entity.entityType === "conference").map((entity) => ({
+        id: entity.id,
+        label: `${entity.name} fans`,
+        imageUrl: entity.imageUrl,
+        color: entity.color,
+        entityType: "conference",
+      })),
     });
   }
-  return filters;
+  for (const dimension of dimensionResult.data ?? []) {
+    if (!unlockedDimensionIds.has(dimension.id)) continue;
+    categories.push({
+      id: `cohort:${dimension.id}`,
+      label: dimension.name,
+      options: (valueResult.data ?? []).filter((value) => value.dimension_id === dimension.id).map((value) => ({
+        id: value.id,
+        label: value.label,
+        imageUrl: null,
+        color: null,
+        entityType: null,
+      })),
+    });
+  }
+  return categories;
 }
 
-export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowsePoll[]> {
+export async function loadBrowsePolls(filters: ConsensusFilterSelection[] = []): Promise<BrowsePoll[]> {
   const client = getBrowserSupabaseClient();
   if (!client) throw new Error("Browse is not connected.");
 
@@ -281,7 +308,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       const cycleId = periodByVersion.get(version.id)?.cycleId;
       return cycleId ? [{ templateVersionId: version.id, cycleId }] : [];
     }),
-    filterIds,
+    filters,
   );
 
   return templates.flatMap<BrowsePoll>((template) => {
@@ -302,9 +329,9 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       createdAt: template.created_at,
       lastResponseAt: consensus?.lastResponseAt ?? null,
       responseCount: consensus?.totalVoterCount ?? 0,
-      selectedResponseCount: consensus?.selectedVoterCount ?? (filterIds.length ? null : 0),
+      selectedResponseCount: consensus?.selectedVoterCount ?? (filters.length ? null : 0),
       consensusSuppressed: consensus?.suppressed ?? false,
-      minimumCohort: consensus?.minimumCohort ?? (filterIds.length ? 5 : 1),
+      minimumCohort: consensus?.minimumCohort ?? (filters.length ? 5 : 1),
       responseCadence: version.response_cadence as ResponseCadence,
       periodTitle: period?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, 2026).periodTitle,
       myResponseStatus: myStatusByVersion.get(version.id) ?? null,

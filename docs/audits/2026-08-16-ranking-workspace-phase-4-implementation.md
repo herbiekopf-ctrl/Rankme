@@ -39,7 +39,7 @@ Phase 4 refines the existing unified ranking workspace around a phone-first deci
 
 - Browse now treats current-period consensus as the primary content instead of previewing the latest individual ballot.
 - Every poll reports its exact distinct-voter total for the active period. A revision updates that person's existing vote and never increments the voter count.
-- Signed-in users can filter consensus with only the team, conference, and demographic choices saved on their own profile.
+- Completing a profile category unlocks every comparison value in that category. For example, a user who provides age and conference affiliation can compare any age band and any conference, while categories they skipped remain unavailable.
 - Overall consensus is visible from the first vote. Demographic slices keep a five-matching-voter privacy floor and hide both the slice size and positions below that floor.
 - Browse includes a compact `Your rankings` strip, while every consensus card exposes its top three and an inline full-order expansion.
 - A submitted ranking can be reopened and revised while its response period remains open. Saving the update atomically replaces the active order and appends the previous published order to the user's private ranking event history.
