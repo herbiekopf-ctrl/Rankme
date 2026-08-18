@@ -1,25 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { buildOwnedConsensusFilters } from "./browseConsensus";
+import { buildUnlockedConsensusFilters } from "./browseConsensus";
 
 describe("browse consensus profile filters", () => {
-  const owned = [
-    { id: "favorite", key: "favorite_entity", value: "team-id" },
-    { id: "conference_fan", key: "conference_affiliation", value: "conference-id" },
-    { id: "cohort:region", key: "region", value: "south" },
+  const unlocked = [
+    { id: "favorite", key: "favorite_entity", options: [
+      { id: "clemson-id", value: "clemson-id" },
+      { id: "georgia-id", value: "georgia-id" },
+    ] },
+    { id: "cohort:age", key: "age_band", options: [
+      { id: "age-18-24", value: "18-24" },
+      { id: "age-25-34", value: "25-34" },
+    ] },
   ];
 
-  it("combines only filters owned by the current user", () => {
-    expect(buildOwnedConsensusFilters(["favorite", "cohort:region"], owned)).toEqual({
-      favorite_entity: "team-id",
-      region: "south",
+  it("allows any value inside a profile category the user completed", () => {
+    expect(buildUnlockedConsensusFilters([
+      { categoryId: "favorite", optionId: "georgia-id" },
+      { categoryId: "cohort:age", optionId: "age-25-34" },
+    ], unlocked)).toEqual({
+      favorite_entity: "georgia-id",
+      age_band: "25-34",
     });
   });
 
-  it("rejects guessed or conflicting filters", () => {
-    expect(buildOwnedConsensusFilters(["unknown"], owned)).toBeNull();
-    expect(buildOwnedConsensusFilters(["first", "second"], [
-      { id: "first", key: "region", value: "south" },
-      { id: "second", key: "region", value: "west" },
-    ])).toBeNull();
+  it("rejects a category the user did not complete or a value outside its catalog", () => {
+    expect(buildUnlockedConsensusFilters([
+      { categoryId: "conference_fan", optionId: "acc-id" },
+    ], unlocked)).toBeNull();
+    expect(buildUnlockedConsensusFilters([
+      { categoryId: "cohort:age", optionId: "unknown-age" },
+    ], unlocked)).toBeNull();
+  });
+
+  it("rejects multiple values for one single-select category", () => {
+    expect(buildUnlockedConsensusFilters([
+      { categoryId: "cohort:age", optionId: "age-18-24" },
+      { categoryId: "cohort:age", optionId: "age-25-34" },
+    ], unlocked)).toBeNull();
   });
 });
