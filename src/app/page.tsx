@@ -3,38 +3,50 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main className="home-hub">
-      <section className="home-hero shell">
-        <div className="season-chip"><span /> College football rankings, built by you</div>
-        <p className="kicker">ONE WORKFLOW. EVERY ARGUMENT.</p>
-        <h1>Rank what you believe.<br /><em>Back it up with real data.</em></h1>
-        <p className="home-lede">Rank a poll, then see how your vote compares with everyone else. Filter the consensus by the perspective you saved on your profile.</p>
-        <div className="home-actions" aria-label="Choose what to do">
-          <Link className="home-action flagship" href="/rank/top-25">
-            <span className="home-action-tag">FLAGSHIP POLL</span>
-            <strong>Vote Top 25</strong>
-            <p>Build your weekly AP-style ballot and compare teams without leaving the ballot.</p>
-            <em>Open the ballot →</em>
-          </Link>
-          <Link className="home-action" href="/consensus">
-            <span className="home-action-icon">⌕</span>
-            <strong>See consensus</strong>
-            <p>Browse community polls, see the live group ranking, and add or revise your vote.</p>
-            <em>Open consensus →</em>
-          </Link>
-          <Link className="home-action" href="/create">
-            <span className="home-action-icon">＋</span>
-            <strong>Create a poll</strong>
-            <p>Choose one real category, ask your question, set the ranking length, and start.</p>
-            <em>Create one poll →</em>
-          </Link>
+      <section className="home-ballot-hero shell">
+        <div className="home-ballot-copy">
+          <div className="home-main-event"><span>●</span> WEEKLY TOP 25 · 2026</div>
+          <p className="kicker">YOUR OPINION. YOUR ORDER.</p>
+          <h1>Make your own<br /><em>AP-style Top 25.</em></h1>
+          <p>Pick 25 teams. Put them in order. Publish your ballot.</p>
+          <div className="home-ballot-actions">
+            <Link className="home-start-ballot" href="/rank/top-25">
+              Start my Top 25 <span aria-hidden="true">→</span>
+            </Link>
+            <small>No setup. Your draft saves automatically.</small>
+          </div>
+        </div>
+
+        <Link className="home-ballot-card" href="/rank/top-25" aria-label="Start your AP-style Top 25 ballot">
+          <header>
+            <div><span>YOUR BALLOT</span><strong>College Football Top 25</strong></div>
+            <b>START HERE</b>
+          </header>
+          <ol>
+            {[1, 2, 3, 4, 5].map((position) => (
+              <li key={position}>
+                <b>{position}</b>
+                <span className="home-empty-mark">+</span>
+                <div><strong>{position === 1 ? "Choose your #1 team" : "Add a team"}</strong><small>Tap to rank</small></div>
+              </li>
+            ))}
+          </ol>
+          <footer><span>Start with the obvious picks. Adjust anything later.</span><strong>Begin →</strong></footer>
+        </Link>
+      </section>
+
+      <section className="home-help-strip">
+        <div className="shell">
+          <div><span className="home-help-icon">?</span><p><strong>Stuck between teams?</strong> Compare records, schedule strength, offense, defense, talent, and custom models inside your ballot.</p></div>
+          <Link href="/rank/top-25">Ranking tools are there when you need them →</Link>
         </div>
       </section>
 
-      <section className="home-workflow">
-        <div className="shell home-workflow-grid">
-          <div><span>01</span><strong>Choose what to rank</strong><p>Teams, players, coaches, stadiums, and more are ready to compare.</p></div>
-          <div><span>02</span><strong>Rank and investigate</strong><p>Search and add quickly. Open details, compare multiple choices, or sort the pool by any available metric when you need depth.</p></div>
-          <div><span>03</span><strong>See the consensus</strong><p>Your one active vote joins the group ranking. Revise it while the period is open; older revisions stay in the background.</p></div>
+      <section className="home-more shell" aria-labelledby="home-more-title">
+        <div className="home-more-heading"><div><p className="kicker">MORE TO RANK</p><h2 id="home-more-title">Top 25 is just the start.</h2></div><p>See what everyone thinks or create a ranking about anything in college football.</p></div>
+        <div className="home-secondary-actions">
+          <Link href="/consensus"><span>COMMUNITY</span><strong>Browse consensus</strong><p>Open current polls, see the group ranking, and add your vote.</p><em>Browse polls →</em></Link>
+          <Link href="/create"><span>YOUR QUESTION</span><strong>Create a ranking</strong><p>Rank teams, players, coaches, stadiums, conferences, and more.</p><em>Create a poll →</em></Link>
         </div>
       </section>
     </main>
