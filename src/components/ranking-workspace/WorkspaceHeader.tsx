@@ -36,7 +36,7 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
         </div>
         <div className="rw-period-state">
           <b>{responseLabel}</b>
-          {periodContext.status === "published" && !controller.editingPublished ? <span><Link href={controller.sharePath}>View ballot</Link><Link href="/trends">See trends</Link></span> : null}
+          {periodContext.status === "published" && !controller.editingPublished ? <span><Link href={controller.sharePath}>View ballot</Link><Link href="/rankings">See rankings</Link></span> : null}
           {controller.editingPublished ? <small>Your previous order stays in private revision history.</small> : null}
           {periodContext.status === "draft" ? <small>Continue the same saved list.</small> : null}
           {!periodContext.status && periodReady ? <small>Your first save opens this period&apos;s list.</small> : null}
@@ -59,8 +59,8 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
           aria-pressed={mobileMode === "analyze"}
           onClick={() => controller.setMobileMode("analyze")}
         >
-          <span>ANALYZE / COMPARE</span>
-          <strong>{controller.candidates.length} eligible</strong>
+          <span>RANK BY METRIC</span>
+          <strong>{controller.metricEntities.length} teams</strong>
         </button>
       </div>
 

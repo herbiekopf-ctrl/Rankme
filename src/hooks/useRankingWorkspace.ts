@@ -14,8 +14,25 @@ import { loadCurrentRankingPeriod, persistBuiltInRankingDraft, persistCustomPoll
 import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 
-export type AnalysisMode = "candidates" | "compare" | "metric-builder";
+export type AnalysisMode = "metric" | "metric-builder";
 export type MobileWorkspaceMode = "ranking" | "analyze";
+
+const PREFERRED_METRIC_KEYS = [
+  "apRank",
+  "strengthOfRecordRank",
+  "fpi",
+  "spOverall",
+  "strengthOfSchedule",
+  "winPct",
+  "wins",
+];
+
+function initialMetricKey(dataset: DatasetEnvelope): string {
+  const metrics = dataset.metricDefinitions ?? [];
+  return PREFERRED_METRIC_KEYS.find((key) => metrics.some((metric) => metric.key === key))
+    ?? metrics[0]?.key
+    ?? "name";
+}
 
 function sameOrder(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((id, index) => id === right[index]);
@@ -35,10 +52,9 @@ export function useRankingWorkspace({
   const [history, dispatch] = useReducer(rankingHistoryReducer, emptyRankingHistory);
   const [query, setQuery] = useState("");
   const [conference, setConference] = useState("All");
-  const [candidateSort, setCandidateSort] = useState("name");
+  const [candidateSort, setCandidateSort] = useState(() => initialMetricKey(initialDataset));
   const [saveState, setSaveState] = useState<"loading" | "saving" | "saved" | "cloud" | "unsaved">("loading");
-  const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("candidates");
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("metric");
   const [mobileMode, setMobileMode] = useState<MobileWorkspaceMode>("ranking");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [focusedRankId, setFocusedRankId] = useState<string | null>(null);
@@ -195,10 +211,9 @@ export function useRankingWorkspace({
     [dataset.entities],
   );
   const hasConference = useMemo(() => dataset.entities.some((entity) => entity.attributes.conference), [dataset.entities]);
-  const candidates = useMemo(() => {
+  const metricEntities = useMemo(() => {
     const options = dataset.entities.filter((entity) =>
-      !rankedSet.has(entity.id)
-      && entityMatches(entity, query)
+      entityMatches(entity, query)
       && (conference === "All" || entity.attributes.conference === conference),
     );
     if (candidateSort === "name") return options.sort((a, b) => a.name.localeCompare(b.name));
@@ -217,17 +232,19 @@ export function useRankingWorkspace({
       if (right == null) return -1;
       return metric.direction === "asc" ? left - right : right - left;
     });
-  }, [candidateSort, conference, customMetrics.metrics, dataset.entities, dataset.metricDefinitions, query, rankedSet]);
+  }, [candidateSort, conference, customMetrics.metrics, dataset.entities, dataset.metricDefinitions, query]);
 
   const validationErrors = useMemo(() => validateRanking(template, history.present), [history.present, template]);
   const remaining = Math.max(0, template.defaultLength - history.present.length);
   const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
   const canRevisePublished = periodReady && periodContext.status === "published" && periodContext.editable;
-  const canEditPeriod = periodReady && periodContext.editable && (periodContext.status !== "published" || editingPublished);
+  const canEditPeriod = periodReady && periodContext.editable;
   const commit = useCallback((entityIds: string[]) => {
-    if (canEditPeriod) dispatch({ type: "commit", entityIds });
-  }, [canEditPeriod]);
+    if (!canEditPeriod) return;
+    if (periodContext.status === "published" && !editingPublished) setEditingPublished(true);
+    dispatch({ type: "commit", entityIds });
+  }, [canEditPeriod, editingPublished, periodContext.status]);
   const addEntity = useCallback((entityId: string, position = history.present.length) => {
     commit(insertEntity(history.present, entityId, position, template.maxLength));
   }, [commit, history.present, template.maxLength]);
@@ -237,8 +254,16 @@ export function useRankingWorkspace({
   const moveRankedEntity = useCallback((entityId: string, toIndex: number) => {
     commit(moveEntity(history.present, entityId, toIndex));
   }, [commit, history.present]);
-  const undo = useCallback(() => { if (canEditPeriod) dispatch({ type: "undo" }); }, [canEditPeriod]);
-  const redo = useCallback(() => { if (canEditPeriod) dispatch({ type: "redo" }); }, [canEditPeriod]);
+  const undo = useCallback(() => {
+    if (!canEditPeriod) return;
+    if (periodContext.status === "published" && !editingPublished) setEditingPublished(true);
+    dispatch({ type: "undo" });
+  }, [canEditPeriod, editingPublished, periodContext.status]);
+  const redo = useCallback(() => {
+    if (!canEditPeriod) return;
+    if (periodContext.status === "published" && !editingPublished) setEditingPublished(true);
+    dispatch({ type: "redo" });
+  }, [canEditPeriod, editingPublished, periodContext.status]);
 
   const beginPublishedEdit = useCallback(() => {
     if (!canRevisePublished) return;
@@ -252,14 +277,6 @@ export function useRankingWorkspace({
     setSaveState("cloud");
     setPublishError("");
   }, [periodContext.entityIds, template.maxLength]);
-
-  const toggleCompare = useCallback((entityId: string) => {
-    setCompareIds((current) => current.includes(entityId)
-      ? current.filter((value) => value !== entityId)
-      : [...current, entityId]);
-    setAnalysisMode("compare");
-    setMobileMode("analyze");
-  }, []);
 
   const focusRankedEntity = useCallback((entityId: string) => {
     if (!rankedSet.has(entityId)) return;
@@ -321,7 +338,7 @@ export function useRankingWorkspace({
     history,
     rankedEntities,
     rankedSet,
-    candidates,
+    metricEntities,
     conferences,
     hasConference,
     query,
@@ -331,8 +348,6 @@ export function useRankingWorkspace({
     candidateSort,
     setCandidateSort,
     saveState: hasPublishedChanges ? "unsaved" as const : saveState,
-    compareIds,
-    setCompareIds,
     analysisMode,
     setAnalysisMode,
     mobileMode,
@@ -368,7 +383,6 @@ export function useRankingWorkspace({
     redo,
     beginPublishedEdit,
     cancelPublishedEdit,
-    toggleCompare,
     copyShareLink,
     publishRanking,
   };

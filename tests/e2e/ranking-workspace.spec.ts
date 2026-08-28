@@ -25,7 +25,7 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
   const publish = page.getByRole("button", { name: "Publish my ranking" });
   await expect(rankingPane.getByText("YOUR RANKING", { exact: true })).toBeVisible();
-  await expect(analysisPane.getByText("ANALYZE / COMPARE", { exact: true })).toBeVisible();
+  await expect(analysisPane.getByText("RANK BY METRIC", { exact: true })).toBeVisible();
   await expect.poll(async () => {
     const rankingBox = await rankingPane.boundingBox();
     const analysisBox = await analysisPane.boundingBox();
@@ -34,8 +34,8 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   await expect(page.locator('[data-media-role="canonical-team-mark"] img')).toHaveCSS("object-fit", "contain");
   await expect(page.locator('[data-media-role="fallback"]').first()).toBeVisible();
   await expect(publish).toBeDisabled();
-  await page.getByRole("button", { name: "Add Alpha State" }).click();
-  await page.getByRole("button", { name: "Add Beta Tech" }).click();
+  await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
+  await page.getByRole("button", { name: "Add Beta Tech to your ranking" }).click();
   await expect(page.getByRole("heading", { name: "2 of 3 ranked" })).toBeVisible();
   await page.getByRole("button", { name: "Move Beta Tech up" }).click();
   await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
@@ -44,9 +44,9 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   await page.getByRole("button", { name: /Redo/ }).click();
   await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
   await page.getByRole("button", { name: "Remove Alpha State" }).click();
-  await expect(page.getByRole("button", { name: "Add Alpha State" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add Alpha State to your ranking" })).toBeVisible();
   await page.getByRole("button", { name: /Undo/ }).click();
-  await page.getByRole("button", { name: "Add Gamma University" }).click();
+  await page.getByRole("button", { name: "Add Gamma University to your ranking" }).click();
   await expect(publish).toBeEnabled();
 
   await expect.poll(async () => page.evaluate(() => {
@@ -55,18 +55,19 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   })).toEqual(["team:2", "team:1", "team:3"]);
 });
 
-test("keeps comparison inside analysis while the ranking remains visible", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop-chromium", "Desktop unified workspace baseline");
+test("edits the personal ballot directly from Rank by Metric", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "Desktop metric ranking baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
 
-  await page.getByRole("button", { name: "Compare Alpha State" }).click();
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
-  await expect(analysisPane.getByRole("heading", { name: "Compare any teams." })).toBeVisible();
+  await expect(analysisPane.getByRole("heading", { name: "One stat. Every team." })).toBeVisible();
   await expect(page.locator('[data-workspace-pane="ranking"]')).toBeVisible();
-  await analysisPane.getByLabel("Beta Tech").check();
-  await expect(analysisPane.getByRole("button", { name: "Alpha State" })).toBeVisible();
-  await expect(analysisPane.getByRole("button", { name: "Beta Tech" })).toBeVisible();
-  await expect(analysisPane.getByText("2 selected · no limit")).toBeVisible();
+  await expect(analysisPane.locator(".metric-team-identity strong")).toHaveText(["Alpha State", "Beta Tech", "Gamma University", "Delta College"]);
+  await analysisPane.getByRole("button", { name: "Add Beta Tech to your ranking" }).click();
+  await analysisPane.getByLabel("Add Alpha State at a specific rank").selectOption("1");
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Alpha State", "Beta Tech"]);
+  await analysisPane.getByRole("button", { name: "Move Beta Tech up" }).click();
+  await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
 });
 
 test("hydrates an existing local draft without changing its saved order", async ({ page }, testInfo) => {
@@ -87,33 +88,33 @@ test("hydrates an existing local draft without changing its saved order", async 
 test("keeps the generic stadium workflow usable at 390px", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "390px mobile baseline");
   await openFixtureRanking(page, stadiumPollConfig, stadiumDataset);
-  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
-  await page.getByRole("button", { name: "Add Alpha Field" }).scrollIntoViewIfNeeded();
-  await page.getByRole("button", { name: "Add Alpha Field" }).click();
+  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: "Add Alpha Field to your ranking" }).scrollIntoViewIfNeeded();
+  await page.getByRole("button", { name: "Add Alpha Field to your ranking" }).click();
   await expect(page.getByRole("button", { name: /^YOUR RANKING/ }).last()).toContainText("1/2");
   await page.getByRole("button", { name: /^YOUR RANKING/ }).last().click();
   await expect(page.getByRole("heading", { name: "1 of 2 ranked" })).toBeVisible();
   await expect(page.locator('[data-media-role="related-team-mark"]').first()).toBeVisible();
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
-  await page.getByLabel("Sort candidates").selectOption("capacity");
-  await expect(page.locator(".candidate-identity > strong")).toHaveText(["Beta Stadium", "Gamma Dome"]);
+  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByLabel("Rank teams by metric").selectOption("capacity");
+  await expect(page.locator(".metric-team-identity > strong")).toHaveText(["Alpha Field", "Beta Stadium", "Gamma Dome"]);
   const analysisScroll = page.locator('[data-scroll-region="analysis"]');
-  await page.locator(".rw-candidate-list").evaluate((element) => { element.setAttribute("style", "padding-bottom: 900px"); });
+  await page.locator(".rank-by-metric-list").evaluate((element) => { element.setAttribute("style", "padding-bottom: 900px"); });
   await analysisScroll.evaluate((element) => { element.scrollTop = 120; });
   await page.getByRole("button", { name: /^YOUR RANKING/ }).last().click();
-  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
+  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
   await expect.poll(() => analysisScroll.evaluate((element) => element.scrollTop)).toBe(120);
 });
 
 test("makes Live Model dense and explicit at 390px", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "390px Live Model baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
-  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
-  await page.getByRole("button", { name: "Add Alpha State" }).click();
-  await page.getByRole("tab", { name: "Live Model" }).click();
+  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
+  await page.getByRole("button", { name: "Live Model" }).click();
 
-  const model = page.getByRole("dialog", { name: "Build a live model" });
+  const model = page.getByRole("dialog", { name: "Build your live model" });
   await expect(model.getByRole("tab", { name: /Results/ })).toHaveAttribute("aria-selected", "true");
   await expect(model.locator(".custom-metric-preview li")).toHaveCount(4);
   await expect(model.getByText("My #1 → Model #1")).toBeVisible();
@@ -126,17 +127,13 @@ test("makes Live Model dense and explicit at 390px", async ({ page }, testInfo) 
   await expect(model.locator(".custom-metric-inputs output")).toHaveText(["50%", "50%"]);
 });
 
-test("uses stacked accessible heat maps on mobile comparison", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile-chromium", "390px comparison baseline");
+test("keeps metric order, ballot position, and edit controls readable at 390px", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "390px metric ranking baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
-  await page.getByRole("button", { name: /^ANALYZE/ }).last().click();
-  await page.getByRole("button", { name: "Add Alpha State" }).click();
-  await page.getByRole("button", { name: "Compare Alpha State" }).click();
-  await page.getByLabel("Beta Tech").check();
-
-  await expect(page.locator(".comparison-mobile-stack")).toBeVisible();
-  await expect(page.locator(".comparison-desktop-table")).toBeHidden();
-  await expect(page.getByText("Your rank #1")).toBeVisible();
-  await expect(page.locator(".comparison-mobile-metric").first()).toContainText(/#1|#2|Strong|Above avg\.|Middle|Below avg\.|Weak/);
+  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
+  await expect(page.locator(".rank-by-metric-list > li").first()).toContainText("Metric #1");
+  await expect(page.getByLabel("Move Alpha State to rank")).toHaveValue("1");
+  await expect(page.getByRole("button", { name: "Add Beta Tech to your ranking" })).toBeVisible();
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

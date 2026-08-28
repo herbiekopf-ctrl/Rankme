@@ -61,7 +61,6 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
                   onMove={(direction) => controller.moveRankedEntity(entity.id, index + direction)}
                   onRemove={() => controller.removeRankedEntity(entity.id)}
                   onDetails={() => controller.setDetailId(entity.id)}
-                  onCompare={controller.dataset.metricDefinitions?.length ? () => controller.toggleCompare(entity.id) : undefined}
                   focused={controller.focusedRankId === entity.id}
                   disabled={controller.isPeriodLocked}
                 />
@@ -69,7 +68,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
               {Array.from({ length: Math.min(remaining, history.present.length ? 3 : 5) }, (_, index) => (
                 <div className="empty-rank" key={history.present.length + index + 1}>
                   <span>{history.present.length + index + 1}</span>
-                  <p>{history.present.length ? "Drop or add the next pick" : "Add an option from Analyze"}</p>
+                  <p>{history.present.length ? "Drop or add the next pick" : "Add a team from Rank by Metric"}</p>
                 </div>
               ))}
             </div>

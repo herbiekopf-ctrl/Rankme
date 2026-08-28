@@ -69,6 +69,9 @@ export type EntityGameSnapshot = {
   week: number | null;
   date: string | null;
   opponent: string;
+  opponentEntityId: string | null;
+  opponentImageUrl: string | null;
+  opponentColor: string | null;
   location: "home" | "away" | "neutral";
   completed: boolean;
   result: "W" | "L" | "T" | null;
@@ -76,12 +79,20 @@ export type EntityGameSnapshot = {
   opponentScore: number | null;
   scoreLabel: string;
   venue: string | null;
+  difficultyScore: number | null;
+  difficultyRank: number | null;
+  difficultyFieldSize: number | null;
+  difficultyLabel: "Elite" | "Tough" | "Even" | "Favorable" | "Easier" | null;
+  difficultyMetric: string | null;
+  difficultyMetricValue: number | null;
 };
 
 export type EntityAnalyticsSnapshot = {
   entityId: string;
   season: number;
   games: EntityGameSnapshot[];
+  bestWin: EntityGameSnapshot | null;
+  worstLoss: EntityGameSnapshot | null;
 };
 
 export type RankingTemplate = {

@@ -1,18 +1,18 @@
-export type OwnedConsensusFilter = {
+export type AvailableConsensusFilter = {
   id: string;
   key: string;
   value: string;
 };
 
-export function buildOwnedConsensusFilters(
+export function buildUnlockedConsensusFilters(
   requestedIds: string[],
-  ownedFilters: OwnedConsensusFilter[],
+  availableFilters: AvailableConsensusFilter[],
 ): Record<string, string> | null {
-  const ownedById = new Map(ownedFilters.map((filter) => [filter.id, filter]));
+  const availableById = new Map(availableFilters.map((filter) => [filter.id, filter]));
   const result: Record<string, string> = {};
 
   for (const id of [...new Set(requestedIds)]) {
-    const filter = ownedById.get(id);
+    const filter = availableById.get(id);
     if (!filter) return null;
     const existing = result[filter.key];
     if (existing && existing !== filter.value) return null;

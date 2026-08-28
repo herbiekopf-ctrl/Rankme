@@ -1,8 +1,5 @@
-import type { Metadata } from "next";
-import { RankingTrends } from "@/components/RankingTrends";
-
-export const metadata: Metadata = { title: "Opinion trends" };
+import { redirect } from "next/navigation";
 
 export default function TrendsPage() {
-  return <RankingTrends />;
+  redirect("/rankings");
 }
