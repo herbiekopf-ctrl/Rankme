@@ -45,7 +45,7 @@ export default function HomePage() {
       <section className="home-more shell" aria-labelledby="home-more-title">
         <div className="home-more-heading"><div><p className="kicker">MORE TO RANK</p><h2 id="home-more-title">Top 25 is just the start.</h2></div><p>See what everyone thinks or create a ranking about anything in college football.</p></div>
         <div className="home-secondary-actions">
-          <Link href="/consensus"><span>COMMUNITY</span><strong>Browse consensus</strong><p>Open current polls, see the group ranking, and add your vote.</p><em>Browse polls →</em></Link>
+          <Link href="/rankings"><span>COMMUNITY</span><strong>See the rankings</strong><p>Open current polls, see the consensus, and compare groups.</p><em>View rankings →</em></Link>
           <Link href="/create"><span>YOUR QUESTION</span><strong>Create a ranking</strong><p>Rank teams, players, coaches, stadiums, conferences, and more.</p><em>Create a poll →</em></Link>
         </div>
       </section>

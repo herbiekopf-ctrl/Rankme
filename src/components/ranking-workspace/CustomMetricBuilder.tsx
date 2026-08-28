@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { MetricInfo } from "../MetricInfo";
+import { RankingPositionControl } from "../RankingPositionControl";
 import { TeamMark } from "../TeamMark";
 import { calculateCustomMetricScores, formatMetricValue, metricDesirability, metricHeatPresentation, metricPopulation, metricRanksByEntity, numericMetric, rankDifference } from "@/lib/domain/metrics";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
@@ -15,7 +16,6 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("All");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [mobileSection, setMobileSection] = useState<"inputs" | "results">("results");
   const components = useMemo(
     () => Object.entries(weights).filter(([, weight]) => weight > 0).map(([metricKey, weight]) => ({ metricKey, weight })),
@@ -32,10 +32,6 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
   );
   const groups = ["All", ...new Set(definitions.map((metric) => metric.group ?? "Other"))];
   const visibleDefinitions = definitions.filter((metric) => (group === "All" || (metric.group ?? "Other") === group) && `${metric.label} ${metric.description}`.toLowerCase().includes(query.toLowerCase()));
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const selectedInModelOrder = modelOrder.filter((entity) => selectedSet.has(entity.id));
-  const selectedUnranked = selectedInModelOrder.filter((entity) => !controller.rankedSet.has(entity.id));
-  const availableSpots = Math.max(0, controller.template.maxLength - controller.history.present.length);
   const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
   const signalMetrics = useMemo(() => [...components]
       .sort((left, right) => right.weight - left.weight)
@@ -54,7 +50,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setAnalysisMode("candidates");
+      if (event.key === "Escape") setAnalysisMode("metric");
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => {
@@ -69,7 +65,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
     try {
       const saved = await controller.customMetrics.save(name, formula);
       controller.setCandidateSort(`custom:${saved.id}`);
-      controller.setAnalysisMode("candidates");
+      controller.setAnalysisMode("metric");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Could not save this metric.");
     } finally { setSaving(false); }
@@ -83,34 +79,13 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
     setWeights((current) => ({ ...current, [metricKey]: weight }));
   }
 
-  function toggleSelected(entityId: string) {
-    setSelectedIds((current) => current.includes(entityId)
-      ? current.filter((id) => id !== entityId)
-      : [...current, entityId]);
-  }
-
-  function addSelected() {
-    if (controller.isPeriodLocked || !selectedUnranked.length || !availableSpots) return;
-    controller.commit([
-      ...controller.history.present,
-      ...selectedUnranked.slice(0, availableSpots).map((entity) => entity.id),
-    ]);
-  }
-
-  function compareSelected() {
-    if (!selectedIds.length) return;
-    controller.setCompareIds(selectedInModelOrder.map((entity) => entity.id));
-    controller.setAnalysisMode("compare");
-    controller.setMobileMode("analyze");
-  }
-
   return <div className="metric-overlay" role="presentation" onMouseDown={(event) => {
-    if (event.target === event.currentTarget) controller.setAnalysisMode("candidates");
+    if (event.target === event.currentTarget) controller.setAnalysisMode("metric");
   }}>
     <section className="custom-metric-builder metric-overlay-card" role="dialog" aria-modal="true" aria-labelledby="custom-metric-title">
       <header className="custom-metric-heading">
-        <div><p className="kicker">CREATE METRIC</p><h3 id="custom-metric-title">Build a live model</h3><p>Weight stats. Pick options. Keep your ranking in view.</p></div>
-        <button type="button" className="metric-overlay-close" onClick={() => controller.setAnalysisMode("candidates")} aria-label="Close metric builder">×</button>
+        <div><p className="kicker">LIVE MODEL</p><h3 id="custom-metric-title">Build your live model</h3><p>Move the sliders. See how the teams rank based on what you care about.</p></div>
+        <button type="button" className="metric-overlay-close" onClick={() => controller.setAnalysisMode("metric")} aria-label="Close live model">×</button>
       </header>
 
       <div className="metric-mobile-sections" role="tablist" aria-label="Live model section">
@@ -120,7 +95,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
 
       <div className="metric-overlay-layout">
         <div className={`metric-builder-controls${mobileSection === "inputs" ? " is-mobile-active" : ""}`}>
-          <label className="custom-metric-name"><span>Name</span><input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} placeholder="My Resume Score" autoFocus /></label>
+          <label className="custom-metric-name"><span>Name to save (optional)</span><input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} placeholder="My Resume Score" /></label>
           <div className="custom-metric-discovery"><label><span>Metrics · {components.length}/12</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search metrics" /></label><div>{groups.map((value) => <button type="button" key={value} className={group === value ? "is-active" : ""} onClick={() => setGroup(value)}>{value}</button>)}</div></div>
           <div className="custom-metric-inputs">
             {visibleDefinitions.map((metric) => {
@@ -131,31 +106,19 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
           </div>
         </div>
 
-        <aside className={`metric-current-ranking${mobileSection === "results" ? " is-mobile-active" : ""}`} aria-labelledby="metric-current-ranking-title">
-          <div><p className="kicker">YOUR RANKING</p><h4 id="metric-current-ranking-title">{controller.history.present.length}/{controller.template.defaultLength}</h4></div>
-          {controller.rankedEntities.length ? <ol>{controller.rankedEntities.map((entity, index) => <li key={entity.id}><span>{index + 1}</span><TeamMark entity={entity} size="small" /><strong>{entity.name}</strong></li>)}</ol> : <p className="metric-result-note">Add teams from the model.</p>}
-        </aside>
-
         <div className={`custom-metric-preview${mobileSection === "results" ? " is-mobile-active" : ""}`}>
-          <div className="metric-preview-heading"><div><p className="kicker">MODEL ORDER</p><h4>Live ranking</h4></div><span>{selectedIds.length} selected</span></div>
-          <div className="metric-preview-actions">
-            <button type="button" disabled={!selectedIds.length} onClick={compareSelected}>Compare</button>
-            <button type="button" disabled={controller.isPeriodLocked || !selectedUnranked.length || !availableSpots} onClick={addSelected}>+ Rank selected</button>
-            <button type="button" disabled={!selectedIds.length} onClick={() => setSelectedIds([])}>Clear</button>
-          </div>
+          <div className="metric-preview-heading"><div><p className="kicker">MODEL ORDER</p><h4>Live ranking</h4></div><span>{modelOrder.length} teams</span></div>
           <ol>{modelOrder.map((entity, index) => {
             const currentRank = controller.history.present.indexOf(entity.id) + 1;
-            const selected = selectedSet.has(entity.id);
             const difference = rankDifference(currentRank || null, index + 1);
             const modelScore = scores.get(entity.id) ?? null;
             const modelHeat = metricHeatPresentation(modelScore == null ? null : modelScore / 100);
-            return <li key={entity.id} className={`${selected ? "is-selected " : ""}model-${difference.tone}`}>
-              <button type="button" className="metric-select-team" aria-pressed={selected} onClick={() => toggleSelected(entity.id)} aria-label={`${selected ? "Deselect" : "Select"} ${entity.name}`}><span aria-hidden="true">{selected ? "✓" : ""}</span></button>
+            return <li key={entity.id} className={`model-${difference.tone}`}>
               <span className="metric-model-rank">{index + 1}</span>
               <TeamMark entity={entity} size="small" />
-              <button type="button" className="metric-model-team" onClick={() => controller.setDetailId(entity.id)}><strong>{entity.name}</strong><small>{currentRank ? `My #${currentRank} → Model #${index + 1}` : `Model #${index + 1} · not ranked`}</small><b className={`movement-${difference.tone}`}>{difference.amount == null ? "+ Rank to compare" : `${difference.label} vs you`}</b></button>
+              <button type="button" className="metric-model-team" onClick={() => controller.setDetailId(entity.id)}><strong>{entity.name}</strong><small>{currentRank ? `My #${currentRank} → Model #${index + 1}` : `Model #${index + 1} · not on your ballot`}</small><b className={`movement-${difference.tone}`}>{difference.amount == null ? "Not ranked by you" : `${difference.label} vs you`}</b></button>
               <output className={`heat-${modelHeat.band}`} style={{ "--heat-bg": modelHeat.background, "--heat-border": modelHeat.border, "--heat-fg": modelHeat.foreground } as CSSProperties}>{modelScore?.toFixed(1) ?? "—"}<small>{modelHeat.label}</small></output>
-              {currentRank ? <button type="button" className="metric-ranked-position" onClick={() => { controller.setAnalysisMode("candidates"); controller.focusRankedEntity(entity.id); }}>#{currentRank}</button> : <button type="button" className="metric-rank-team" disabled={controller.isPeriodLocked || !availableSpots} onClick={() => controller.addEntity(entity.id)}>+ Rank</button>}
+              <RankingPositionControl entityName={entity.name} currentRank={currentRank || null} rankingLength={controller.history.present.length} maxLength={controller.template.maxLength} disabled={controller.isPeriodLocked} onAdd={(position) => controller.addEntity(entity.id, position)} onMove={(position) => controller.moveRankedEntity(entity.id, position)} />
               <div className="metric-model-signals">{signalMetrics.map(({ definition, population, ranks }) => {
                 const value = numericMetric(entity, definition.key);
                 const metricRank = ranks.get(entity.id)?.rank ?? 0;
@@ -168,7 +131,7 @@ export function CustomMetricBuilder({ controller }: { controller: RankingWorkspa
         </div>
       </div>
       {message && <p className="form-error metric-overlay-message" role="alert">{message}</p>}
-      <footer className="custom-metric-actions"><span>{!controller.canPublishRelational ? "Sign in to save this metric." : "Saving never changes your ranking."}</span><button className="button button-secondary" onClick={() => controller.setAnalysisMode("candidates")}>Close</button><button className="button button-primary" disabled={!controller.canPublishRelational || saving || !name.trim() || !components.length} onClick={() => void save()}>{saving ? "Saving…" : "Save metric"}</button></footer>
+      <footer className="custom-metric-actions"><span>{!controller.canPublishRelational ? "Sign in to save this model." : "Name it only if you want to reuse it."}</span><button className="button button-secondary" onClick={() => controller.setAnalysisMode("metric")}>Close</button><button className="button button-primary" disabled={!controller.canPublishRelational || saving || !name.trim() || !components.length} onClick={() => void save()}>{saving ? "Saving…" : "Save model"}</button></footer>
     </section>
   </div>;
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser } from "./browser";
+import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser, requirePermanentRankedUser } from "./browser";
 import { localRankingPeriod, type RankingResponseStatus, type ResponseCadence } from "@/lib/domain/rankingPeriods";
 
 export type BrowsePollPreview = {
   position: number;
+  entityId: string;
   canonicalKey: string;
   name: string;
   imageUrl: string | null;
@@ -14,13 +15,18 @@ export type BrowsePollPreview = {
   ballotCount: number;
 };
 
-export type BrowseDemographicFilter = {
+export type BrowseDemographicFilterOption = {
   id: string;
   label: string;
-  group: string;
   imageUrl: string | null;
   color: string | null;
   entityType: "team" | "conference" | null;
+};
+
+export type BrowseDemographicFilterCategory = {
+  id: string;
+  label: string;
+  options: BrowseDemographicFilterOption[];
 };
 
 export type BrowsePoll = {
@@ -28,11 +34,15 @@ export type BrowsePoll = {
   slug: string;
   title: string;
   description: string | null;
+  creatorName: string;
   templateKind: string;
   templateVersionId: string;
   cycleId: string | null;
   entityType: string;
   length: number;
+  maxLength: number;
+  datasetVersionId: string | null;
+  editable: boolean;
   createdAt: string;
   lastResponseAt: string | null;
   responseCount: number;
@@ -43,6 +53,16 @@ export type BrowsePoll = {
   periodTitle: string;
   myResponseStatus: RankingResponseStatus;
   preview: BrowsePollPreview[];
+};
+
+export type BrowseRankingEditorState = {
+  rankingId: string | null;
+  datasetVersionId: string;
+  status: "draft" | "published" | null;
+  visibility: string;
+  title: string;
+  note: string;
+  entityIds: string[];
 };
 
 type BrowseConsensusResult = {
@@ -86,9 +106,10 @@ function parseConsensusResult(value: unknown): BrowseConsensusResult | null {
   const positions = Array.isArray(row.positions) ? row.positions.flatMap<BrowsePollPreview>((position) => {
     if (!position || typeof position !== "object" || Array.isArray(position)) return [];
     const item = position as Record<string, unknown>;
-    if (typeof item.canonicalKey !== "string" || typeof item.name !== "string" || typeof item.position !== "number") return [];
+    if (typeof item.entityId !== "string" || typeof item.canonicalKey !== "string" || typeof item.name !== "string" || typeof item.position !== "number") return [];
     return [{
       position: item.position,
+      entityId: item.entityId,
       canonicalKey: item.canonicalKey,
       name: item.name,
       imageUrl: typeof item.imageUrl === "string" ? item.imageUrl : null,
@@ -132,70 +153,17 @@ async function loadConsensus(
   return new Map(results.map((result) => [result.templateVersionId, result]));
 }
 
-export async function loadBrowseProfileFilters(): Promise<BrowseDemographicFilter[]> {
+export async function loadBrowseProfileFilters(): Promise<BrowseDemographicFilterCategory[]> {
   const client = getBrowserSupabaseClient();
   if (!client) return [];
   const user = await getRankedUser(client).catch(() => null);
   if (!isPermanentRankedUser(user)) return [];
-
-  const [affiliationResult, selectionResult] = await Promise.all([
-    client
-      .from("user_entity_affiliations")
-      .select("entity_id,affiliation_type")
-      .eq("user_id", user.id)
-      .in("affiliation_type", ["favorite", "conference_fan"]),
-    client.from("user_cohort_values").select("cohort_value_id").eq("user_id", user.id),
-  ]);
-  if (affiliationResult.error) throw affiliationResult.error;
-  if (selectionResult.error) throw selectionResult.error;
-
-  const affiliationEntityIds = (affiliationResult.data ?? []).map((row) => row.entity_id);
-  const cohortValueIds = (selectionResult.data ?? []).map((row) => row.cohort_value_id);
-  const [entityResult, valueResult] = await Promise.all([
-    affiliationEntityIds.length
-      ? client.from("entities").select("id,name,image_url,color,entity_types!inner(slug)").in("id", affiliationEntityIds)
-      : Promise.resolve({ data: [], error: null }),
-    cohortValueIds.length
-      ? client.from("cohort_values").select("id,dimension_id,label,slug").in("id", cohortValueIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-  if (entityResult.error) throw entityResult.error;
-  if (valueResult.error) throw valueResult.error;
-  const dimensionIds = [...new Set((valueResult.data ?? []).map((value) => value.dimension_id))];
-  const { data: dimensions, error: dimensionError } = dimensionIds.length
-    ? await client.from("cohort_dimensions").select("id,name,slug,sensitive").in("id", dimensionIds).eq("status", "active")
-    : { data: [], error: null };
-  if (dimensionError) throw dimensionError;
-
-  const entityById = new Map((entityResult.data ?? []).map((entity) => [entity.id, entity]));
-  const dimensionById = new Map((dimensions ?? []).map((dimension) => [dimension.id, dimension]));
-  const filters: BrowseDemographicFilter[] = [];
-  for (const affiliation of affiliationResult.data ?? []) {
-    const entity = entityById.get(affiliation.entity_id);
-    const entityType = Array.isArray(entity?.entity_types) ? entity?.entity_types[0] : entity?.entity_types;
-    if (!entity || (entityType?.slug !== "team" && entityType?.slug !== "conference")) continue;
-    filters.push({
-      id: affiliation.affiliation_type === "favorite" ? "favorite" : "conference_fan",
-      label: `${entity.name} fans`,
-      group: affiliation.affiliation_type === "favorite" ? "Favorite team" : "Conference",
-      imageUrl: entity.image_url,
-      color: entity.color,
-      entityType: entityType.slug,
-    });
-  }
-  for (const value of valueResult.data ?? []) {
-    const dimension = dimensionById.get(value.dimension_id);
-    if (!dimension) continue;
-    filters.push({
-      id: `cohort:${value.id}`,
-      label: value.label,
-      group: dimension.name,
-      imageUrl: null,
-      color: null,
-      entityType: null,
-    });
-  }
-  return filters;
+  const { data } = await client.auth.getSession();
+  if (!data.session?.access_token) return [];
+  const response = await fetch("/api/consensus/filters", { headers: { Authorization: `Bearer ${data.session.access_token}` } });
+  if (!response.ok) throw new Error("Demographic filters could not be loaded.");
+  const body = await response.json() as { categories?: BrowseDemographicFilterCategory[] };
+  return Array.isArray(body.categories) ? body.categories : [];
 }
 
 export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowsePoll[]> {
@@ -204,7 +172,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
 
   const { data: templates, error: templateError } = await client
     .from("ranking_templates")
-    .select("id,slug,title,description,template_kind,created_at")
+    .select("id,slug,title,description,template_kind,created_at,created_by")
     .eq("status", "active")
     .eq("visibility", "public")
     .order("created_at", { ascending: false })
@@ -215,7 +183,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   const templateIds = templates.map((template) => template.id);
   const { data: versions, error: versionError } = await client
     .from("ranking_template_versions")
-    .select("id,template_id,entity_type_id,default_length,version,response_cadence")
+    .select("id,template_id,entity_type_id,default_length,max_length,version,response_cadence")
     .in("template_id", templateIds)
     .order("version", { ascending: false });
   if (versionError) throw versionError;
@@ -231,19 +199,24 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   const entityTypeById = new Map(entityTypes.map((entityType) => [entityType.id, entityType.slug]));
 
   const versionIds = latestVersions.map((version) => version.id);
-  const [cycleResult, rankedUser] = await Promise.all([
+  const creatorIds = [...new Set(templates.map((template) => template.created_by).filter((id): id is string => Boolean(id)))];
+  const [cycleResult, rankedUser, creatorResult] = await Promise.all([
     client
       .from("ranking_cycles")
-      .select("id,template_id,slug,title,opens_at,closes_at,status")
+      .select("id,template_id,slug,title,opens_at,closes_at,status,season")
       .in("template_id", templateIds)
       .order("opens_at", { ascending: false, nullsFirst: false })
       .limit(250),
     getRankedUser(client).catch(() => null),
+    creatorIds.length
+      ? client.from("profiles").select("id,display_name,handle").in("id", creatorIds)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (cycleResult.error) throw cycleResult.error;
+  if (creatorResult.error) throw creatorResult.error;
 
   const cyclesData = cycleResult.data ?? [];
-  const periodByVersion = new Map<string, { title: string; cycleId: string | null }>();
+  const periodByVersion = new Map<string, { title: string; cycleId: string | null; season: number; editable: boolean }>();
   const now = Date.now();
   for (const version of latestVersions) {
     const cadence = version.response_cadence as ResponseCadence;
@@ -255,8 +228,25 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       if (cadence === "seasonal") return cycle.slug === "2026-season";
       return Boolean(cycle.opens_at && cycle.closes_at && new Date(cycle.opens_at).getTime() <= now && now < new Date(cycle.closes_at).getTime());
     });
-    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null });
+    const editable = Boolean(current
+      && current.status === "open"
+      && (!current.opens_at || new Date(current.opens_at).getTime() <= now)
+      && (!current.closes_at || now < new Date(current.closes_at).getTime()));
+    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null, season: current?.season ?? 2026, editable });
   }
+
+  const seasons = [...new Set([...periodByVersion.values()].map((period) => period.season))];
+  const { data: collegeFootballDataset, error: datasetError } = await client.from("datasets").select("id").eq("slug", "cfbd-season").maybeSingle();
+  if (datasetError) throw datasetError;
+  const datasetVersionsResult = collegeFootballDataset?.id && seasons.length
+    ? await client.from("dataset_versions").select("id,season,published_at").eq("dataset_id", collegeFootballDataset.id).in("season", seasons).in("status", ["published", "superseded"]).order("published_at", { ascending: false })
+    : { data: [], error: null };
+  if (datasetVersionsResult.error) throw datasetVersionsResult.error;
+  const datasetVersionBySeason = new Map<number, string>();
+  for (const datasetVersion of datasetVersionsResult.data ?? []) {
+    if (datasetVersion.season != null && !datasetVersionBySeason.has(datasetVersion.season)) datasetVersionBySeason.set(datasetVersion.season, datasetVersion.id);
+  }
+  const creatorById = new Map((creatorResult.data ?? []).map((creator) => [creator.id, creator.display_name || (creator.handle ? `@${creator.handle}` : "Ranked member")]));
 
   const myStatusByVersion = new Map<string, RankingResponseStatus>();
   if (isPermanentRankedUser(rankedUser)) {
@@ -294,11 +284,15 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       slug: template.slug,
       title: template.title,
       description: template.description,
+      creatorName: template.template_kind === "official" ? "Ranked" : template.created_by ? creatorById.get(template.created_by) ?? "Ranked member" : "Ranked",
       templateKind: template.template_kind,
       templateVersionId: version.id,
       cycleId: period?.cycleId ?? null,
       entityType: entityTypeById.get(version.entity_type_id) ?? "item",
       length: version.default_length,
+      maxLength: version.max_length,
+      datasetVersionId: datasetVersionBySeason.get(period?.season ?? 2026) ?? null,
+      editable: period?.editable ?? false,
       createdAt: template.created_at,
       lastResponseAt: consensus?.lastResponseAt ?? null,
       responseCount: consensus?.totalVoterCount ?? 0,
@@ -311,4 +305,56 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       preview: consensus?.positions ?? [],
     }];
   });
+}
+
+export async function loadBrowseRankingEditors(polls: BrowsePoll[]): Promise<Map<string, BrowseRankingEditorState>> {
+  const client = getBrowserSupabaseClient();
+  if (!client || !polls.length) return new Map();
+  const user = await getRankedUser(client).catch(() => null);
+  if (!isPermanentRankedUser(user)) return new Map();
+  const versionIds = [...new Set(polls.map((poll) => poll.templateVersionId))];
+  const { data, error } = await client
+    .from("rankings")
+    .select("id,template_version_id,cycle_id,dataset_version_id,status,visibility,title,note,ranking_placements(entity_id,position)")
+    .eq("author_id", user.id)
+    .in("template_version_id", versionIds)
+    .in("status", ["draft", "published"])
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  const rankingByPeriod = new Map<string, (NonNullable<typeof data>)[number]>();
+  for (const ranking of data ?? []) {
+    const key = `${ranking.template_version_id}:${ranking.cycle_id}`;
+    if (!rankingByPeriod.has(key)) rankingByPeriod.set(key, ranking);
+  }
+  return new Map(polls.flatMap((poll) => {
+    if (!poll.datasetVersionId) return [];
+    const ranking = rankingByPeriod.get(`${poll.templateVersionId}:${poll.cycleId}`);
+    const placements = ranking?.ranking_placements ?? [];
+    return [[poll.templateVersionId, {
+      rankingId: ranking?.id ?? null,
+      datasetVersionId: ranking?.dataset_version_id ?? poll.datasetVersionId,
+      status: ranking?.status === "published" ? "published" : ranking?.status === "draft" ? "draft" : null,
+      visibility: ranking?.visibility ?? "public",
+      title: ranking?.title ?? poll.title,
+      note: ranking?.note ?? poll.description ?? "",
+      entityIds: [...placements].sort((left, right) => left.position - right.position).map((placement) => placement.entity_id),
+    } satisfies BrowseRankingEditorState]];
+  }));
+}
+
+export async function saveBrowseRankingOrder(poll: BrowsePoll, state: BrowseRankingEditorState, entityIds: string[]): Promise<BrowseRankingEditorState> {
+  const client = getBrowserSupabaseClient();
+  if (!client) throw new Error("Saving is unavailable right now.");
+  await requirePermanentRankedUser(client);
+  const { data, error } = await client.rpc("save_my_ranking_draft", {
+    p_template_version_id: poll.templateVersionId,
+    p_dataset_version_id: state.datasetVersionId,
+    p_title: state.title,
+    p_note: state.note,
+    p_visibility: state.visibility,
+    p_entity_ids: entityIds,
+    p_existing_ranking_id: state.rankingId ?? undefined,
+  });
+  if (error) throw error;
+  return { ...state, rankingId: data, status: state.status ?? "draft", entityIds };
 }

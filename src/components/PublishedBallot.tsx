@@ -100,7 +100,7 @@ export function PublishedBallot({
             <strong>{sourceStatus}</strong>
             <p>Every published list preserves the season context used when it was created.</p>
           </div>
-          <Link className="consensus-callout" href="/consensus"><span>Compare the country</span><strong>Open consensus →</strong></Link>
+          <Link className="consensus-callout" href="/rankings"><span>Compare the country</span><strong>Open rankings →</strong></Link>
         </aside>
       </section>
     </div>

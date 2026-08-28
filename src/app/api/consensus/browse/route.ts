@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { buildOwnedConsensusFilters, type OwnedConsensusFilter } from "@/lib/domain/browseConsensus";
+import { buildUnlockedConsensusFilters } from "@/lib/domain/browseConsensus";
 import { createAdminSupabaseClient } from "@/lib/supabase/clients";
+import { loadUnlockedConsensusFilterCatalog } from "@/lib/supabase/consensusFilterCatalog";
 import type { Json } from "@/lib/supabase/database.types";
 
 const requestSchema = z.object({
@@ -15,51 +16,6 @@ const requestSchema = z.object({
 function bearerToken(request: Request): string | null {
   const authorization = request.headers.get("authorization");
   return authorization?.startsWith("Bearer ") ? authorization.slice(7) : null;
-}
-
-async function ownedProfileFilters(
-  userId: string,
-  client: NonNullable<ReturnType<typeof createAdminSupabaseClient>>,
-): Promise<OwnedConsensusFilter[]> {
-  const [affiliationResult, selectionResult] = await Promise.all([
-    client
-      .from("user_entity_affiliations")
-      .select("entity_id,affiliation_type")
-      .eq("user_id", userId)
-      .in("affiliation_type", ["favorite", "conference_fan"]),
-    client.from("user_cohort_values").select("cohort_value_id").eq("user_id", userId),
-  ]);
-  if (affiliationResult.error) throw affiliationResult.error;
-  if (selectionResult.error) throw selectionResult.error;
-
-  const filters: OwnedConsensusFilter[] = (affiliationResult.data ?? []).flatMap((row) => {
-    if (row.affiliation_type === "favorite") {
-      return [{ id: "favorite", key: "favorite_entity", value: row.entity_id }];
-    }
-    if (row.affiliation_type === "conference_fan") {
-      return [{ id: "conference_fan", key: "conference_affiliation", value: row.entity_id }];
-    }
-    return [];
-  });
-
-  const cohortValueIds = (selectionResult.data ?? []).map((row) => row.cohort_value_id);
-  if (!cohortValueIds.length) return filters;
-  const { data: values, error: valueError } = await client
-    .from("cohort_values")
-    .select("id,slug,dimension_id")
-    .in("id", cohortValueIds);
-  if (valueError) throw valueError;
-  const dimensionIds = [...new Set((values ?? []).map((value) => value.dimension_id))];
-  const { data: dimensions, error: dimensionError } = dimensionIds.length
-    ? await client.from("cohort_dimensions").select("id,slug").in("id", dimensionIds).eq("status", "active")
-    : { data: [], error: null };
-  if (dimensionError) throw dimensionError;
-  const dimensionById = new Map((dimensions ?? []).map((dimension) => [dimension.id, dimension.slug]));
-  for (const value of values ?? []) {
-    const key = dimensionById.get(value.dimension_id);
-    if (key) filters.push({ id: `cohort:${value.id}`, key, value: value.slug });
-  }
-  return filters;
 }
 
 export async function POST(request: Request) {
@@ -77,9 +33,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Sign in to use your profile filters." }, { status: 401 });
     }
     try {
-      const owned = await ownedProfileFilters(authData.user.id, client);
-      const selected = buildOwnedConsensusFilters(parsed.data.filterIds, owned);
-      if (!selected) return NextResponse.json({ error: "Choose filters saved on your profile." }, { status: 403 });
+      const catalog = await loadUnlockedConsensusFilterCatalog(authData.user.id, client);
+      const selected = buildUnlockedConsensusFilters(parsed.data.filterIds, catalog.flatMap((category) => category.options));
+      if (!selected) return NextResponse.json({ error: "Choose a value from a demographic category you unlocked." }, { status: 403 });
       filters = selected;
     } catch {
       return NextResponse.json({ error: "Your profile filters could not be loaded." }, { status: 503 });

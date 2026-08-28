@@ -110,12 +110,13 @@ export function PreferenceProfile() {
 
   return (
     <section className="preference-card">
-      <div className="preference-heading"><div><p className="kicker">OPTIONAL CONTEXT</p><h2>Your ranking perspective</h2><p>Choose only what you want to share. Ranked stores coarse categories, never exact age or location.</p></div><span className="privacy-pill">5+ privacy floor</span></div>
+      <div className="preference-heading"><div><p className="kicker">UNLOCK DEMOGRAPHIC FILTERS</p><h2>Add context. Compare any group.</h2><p>Add information about yourself to unlock that entire category when exploring consensus rankings. For example, adding your conference affiliation lets you compare rankings from fans of any conference.</p></div><span className="privacy-pill">5+ privacy floor</span></div>
+      <div className="profile-unlock-note"><strong>You choose what to unlock.</strong><span>Skip a category and it stays unavailable. Your individual answers are never shown in consensus results.</span></div>
       <div className="preference-grid">
         <div className="affiliation-fields">
           {([{"key":"favorite","label":"Favorite team","options":teams},{"key":"conference_fan","label":"Conference affiliation","options":conferences}] as const).map(({ key, label, options }) => {
             const selectedEntity = profileEntities.find((entity) => entity.id === affiliations[key]);
-            return <label key={key} className="affiliation-field"><span>{label}</span><div>{selectedEntity && <TeamMark entity={profileMark(selectedEntity)} size="small" />}<select value={affiliations[key]} onChange={(event) => setAffiliations((current) => ({ ...current, [key]: event.target.value }))}><option value="">No selection</option>{options.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></div><small>Optional. Used only for private profile context and privacy-cleared group views.</small></label>;
+            return <label key={key} className="affiliation-field"><span>{label}</span><div>{selectedEntity && <TeamMark entity={profileMark(selectedEntity)} size="small" />}<select value={affiliations[key]} onChange={(event) => setAffiliations((current) => ({ ...current, [key]: event.target.value }))}><option value="">No selection</option>{options.map((entity) => <option key={entity.id} value={entity.id}>{entity.name}</option>)}</select></div><small>Complete this once to unlock every {label.toLocaleLowerCase()} option in Rankings.</small></label>;
           })}
         </div>
         {dimensions.filter((dimension) => dimension.slug !== "participation").map((dimension) => (
