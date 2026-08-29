@@ -69,7 +69,7 @@ export function EntityDetailSheet({ controller }: { controller: RankingWorkspace
       {([{"label":"Best win","empty":"No wins yet","game":entityAnalytics.bestWin},{"label":"Worst loss","empty":"No losses yet","game":entityAnalytics.worstLoss}] as const).map(({ label, empty, game }) => game ? <div key={label}><span>{label}</span><TeamMark entity={opponentEntity(game)} size="small" /><strong>{game.opponent}</strong><small>{game.result} {game.scoreLabel}{game.difficultyRank ? ` · opponent #${game.difficultyRank}` : ""}</small></div> : <div className="is-empty" key={label}><span>{label}</span><strong>{empty}</strong><small>Updates after completed games.</small></div>)}
     </section> : null}
     {entity.entityType === "team" && <section className="analytics-schedule">
-      <div><div><h3>Schedule & scores</h3><span>{completedGames.length ? `${completedGames.filter((game) => game.result === "W").length} wins in completed games` : "No completed results yet"}</span></div><small className="difficulty-legend">Favorable <i /> Tough</small></div>
+      <div><div><h3>Schedule & scores</h3><span>{completedGames.length ? `${completedGames.filter((game) => game.result === "W").length} wins in completed games` : "No completed results yet"}</span></div><small className="difficulty-legend">Underdog <i /> Favored</small></div>
       {entityAnalytics ? entityAnalytics.games.length ? <ol>{entityAnalytics.games.map((game, index) => <Fragment key={game.id}>
         {index === nextGameIndex ? <li className="schedule-next-divider"><span>Next game</span></li> : null}
         <li className={game.completed ? "is-completed" : "is-upcoming"}>
@@ -77,7 +77,7 @@ export function EntityDetailSheet({ controller }: { controller: RankingWorkspace
           <TeamMark entity={opponentEntity(game)} size="small" />
           <strong><small>{game.location === "away" ? "AT" : game.location === "neutral" ? "NEUTRAL" : "VS"}</small>{game.opponent}</strong>
           <time>{game.date ? new Date(game.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "TBD"}</time>
-          <div className="game-difficulty" style={{ "--difficulty": game.difficultyScore ?? .5 } as CSSProperties}><i /><span>{game.difficultyLabel ?? "No rating"}{game.difficultyRank ? ` · #${game.difficultyRank}` : ""}</span></div>
+          <div className={`game-difficulty${game.matchupAdvantage === null ? " is-missing" : game.matchupAdvantage >= .06 ? " is-favored" : game.matchupAdvantage <= -.06 ? " is-underdog" : " is-even"}`} style={{ "--difficulty": game.matchupPosition ?? .5 } as CSSProperties} aria-label={game.matchupLabel ? `${entity.name} is ${game.matchupLabel.toLowerCase()} against ${game.opponent}` : `Matchup comparison unavailable for ${game.opponent}`}><i /><span>{game.matchupLabel ?? "Comparison unavailable"}{game.matchupAdvantage !== null ? ` · ${game.matchupAdvantage > 0 ? "+" : ""}${Math.round(game.matchupAdvantage * 100)}` : ""}</span></div>
           <output className={game.result ? `result-${game.result.toLowerCase()}` : ""}>{game.result ? `${game.result} ${game.scoreLabel}` : game.scoreLabel}</output>
         </li>
       </Fragment>)}</ol> : <p>No schedule has been published for this season.</p> : <p>Loading schedule…</p>}

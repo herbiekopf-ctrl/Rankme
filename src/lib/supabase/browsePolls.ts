@@ -29,6 +29,17 @@ export type BrowseDemographicFilterCategory = {
   options: BrowseDemographicFilterOption[];
 };
 
+export type BrowseConsensusPeriod = {
+  cycleId: string;
+  title: string;
+  week: number | null;
+  opensAt: string | null;
+  responseCount: number;
+  selectedResponseCount: number | null;
+  suppressed: boolean;
+  positions: BrowsePollPreview[];
+};
+
 export type BrowsePoll = {
   id: string;
   slug: string;
@@ -53,6 +64,7 @@ export type BrowsePoll = {
   periodTitle: string;
   myResponseStatus: RankingResponseStatus;
   preview: BrowsePollPreview[];
+  history: BrowseConsensusPeriod[];
 };
 
 export type BrowseRankingEditorState = {
@@ -93,6 +105,17 @@ export function recentPolls(polls: BrowsePoll[]): BrowsePoll[] {
 
 export function popularPolls(polls: BrowsePoll[]): BrowsePoll[] {
   return [...polls].sort((left, right) => right.responseCount - left.responseCount || (right.lastResponseAt ?? right.createdAt).localeCompare(left.lastResponseAt ?? left.createdAt));
+}
+
+export function isPrimaryTop25(poll: Pick<BrowsePoll, "slug" | "templateKind" | "entityType" | "length">): boolean {
+  return poll.slug === "official-top-25"
+    || (poll.templateKind === "official" && poll.entityType === "team" && poll.length === 25);
+}
+
+export function displayRankingPeriod(title: string): string {
+  const weekOf = title.match(/week of\s+(.+)$/i)?.[1];
+  if (weekOf) return `Week of ${weekOf}`;
+  return title.replace(/^\d{4}\s+response\s+/i, "");
 }
 
 export function participatedPolls(polls: BrowsePoll[]): BrowsePoll[] {
@@ -150,7 +173,7 @@ async function loadConsensus(
   if (!response.ok) throw new Error("Community consensus could not be loaded.");
   const body = await response.json() as { results?: unknown[] };
   const results = (body.results ?? []).map(parseConsensusResult).filter((result): result is BrowseConsensusResult => Boolean(result));
-  return new Map(results.map((result) => [result.templateVersionId, result]));
+  return new Map(results.map((result) => [`${result.templateVersionId}:${result.cycleId}`, result]));
 }
 
 export async function loadBrowseProfileFilters(): Promise<BrowseDemographicFilterCategory[]> {
@@ -203,7 +226,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   const [cycleResult, rankedUser, creatorResult] = await Promise.all([
     client
       .from("ranking_cycles")
-      .select("id,template_id,slug,title,opens_at,closes_at,status,season")
+      .select("id,template_id,slug,title,opens_at,closes_at,status,season,week")
       .in("template_id", templateIds)
       .order("opens_at", { ascending: false, nullsFirst: false })
       .limit(250),
@@ -216,7 +239,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   if (creatorResult.error) throw creatorResult.error;
 
   const cyclesData = cycleResult.data ?? [];
-  const periodByVersion = new Map<string, { title: string; cycleId: string | null; season: number; editable: boolean }>();
+  const periodByVersion = new Map<string, { title: string; cycleId: string | null; season: number; week: number | null; opensAt: string | null; editable: boolean }>();
   const now = Date.now();
   for (const version of latestVersions) {
     const cadence = version.response_cadence as ResponseCadence;
@@ -232,7 +255,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       && current.status === "open"
       && (!current.opens_at || new Date(current.opens_at).getTime() <= now)
       && (!current.closes_at || now < new Date(current.closes_at).getTime()));
-    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null, season: current?.season ?? 2026, editable });
+    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null, season: current?.season ?? 2026, week: current?.week ?? null, opensAt: current?.opens_at ?? null, editable });
   }
 
   const seasons = [...new Set([...periodByVersion.values()].map((period) => period.season))];
@@ -266,19 +289,48 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
     }
   }
 
-  const consensusByVersion = await loadConsensus(
-    latestVersions.flatMap((version) => {
+  const currentTargets = latestVersions.flatMap((version) => {
       const cycleId = periodByVersion.get(version.id)?.cycleId;
       return cycleId ? [{ templateVersionId: version.id, cycleId }] : [];
-    }),
-    filterIds,
-  );
+    });
+  const top25Template = templates.find((template) => template.slug === "official-top-25");
+  const top25Version = top25Template ? latestVersionByTemplate.get(top25Template.id) : undefined;
+  const top25CycleId = top25Version ? periodByVersion.get(top25Version.id)?.cycleId : null;
+  const top25Cycles = top25Template
+    ? cyclesData
+        .filter((cycle) => cycle.template_id === top25Template.id && (cycle.id === top25CycleId || !cycle.opens_at || new Date(cycle.opens_at).getTime() <= now))
+        .sort((left, right) => String(right.opens_at ?? "").localeCompare(String(left.opens_at ?? "")))
+        .slice(0, 3)
+        .reverse()
+    : [];
+  const historyTargets = top25Version
+    ? top25Cycles.map((cycle) => ({ templateVersionId: top25Version.id, cycleId: cycle.id }))
+    : [];
+  const [consensusByTarget, historyByTarget] = await Promise.all([
+    loadConsensus(currentTargets, filterIds),
+    loadConsensus(historyTargets, filterIds),
+  ]);
 
   return templates.flatMap<BrowsePoll>((template) => {
     const version = latestVersionByTemplate.get(template.id);
     if (!version) return [];
     const period = periodByVersion.get(version.id);
-    const consensus = consensusByVersion.get(version.id);
+    const consensus = period?.cycleId ? consensusByTarget.get(`${version.id}:${period.cycleId}`) : undefined;
+    const history = top25Version?.id === version.id
+      ? top25Cycles.map((cycle): BrowseConsensusPeriod => {
+          const result = historyByTarget.get(`${version.id}:${cycle.id}`);
+          return {
+            cycleId: cycle.id,
+            title: cycle.title,
+            week: cycle.week,
+            opensAt: cycle.opens_at,
+            responseCount: result?.totalVoterCount ?? 0,
+            selectedResponseCount: result?.selectedVoterCount ?? (filterIds.length ? null : 0),
+            suppressed: result?.suppressed ?? false,
+            positions: result?.positions ?? [],
+          };
+        })
+      : [];
     return [{
       id: template.id,
       slug: template.slug,
@@ -303,6 +355,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       periodTitle: period?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, 2026).periodTitle,
       myResponseStatus: myStatusByVersion.get(version.id) ?? null,
       preview: consensus?.positions ?? [],
+      history,
     }];
   });
 }

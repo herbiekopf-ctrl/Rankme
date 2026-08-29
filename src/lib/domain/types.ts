@@ -85,6 +85,9 @@ export type EntityGameSnapshot = {
   difficultyLabel: "Elite" | "Tough" | "Even" | "Favorable" | "Easier" | null;
   difficultyMetric: string | null;
   difficultyMetricValue: number | null;
+  matchupAdvantage: number | null;
+  matchupPosition: number | null;
+  matchupLabel: "Strongly favored" | "Favored" | "Slightly favored" | "Toss-up" | "Slight underdog" | "Underdog" | "Major underdog" | null;
 };
 
 export type EntityAnalyticsSnapshot = {
