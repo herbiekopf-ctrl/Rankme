@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTeamStrengthIndex, signatureResults } from "./scheduleInsights";
+import { buildTeamStrengthIndex, calculateMatchupAdvantage, signatureResults } from "./scheduleInsights";
 
 describe("team schedule insights", () => {
   it("builds a direction-aware composite opponent-strength order", () => {
@@ -25,5 +25,14 @@ describe("team schedule insights", () => {
     ];
     expect(signatureResults(games)).toEqual({ bestWin: games[0], worstLoss: games[3] });
     expect(signatureResults(games.filter((game) => game.result === "W"))).toMatchObject({ worstLoss: null });
+  });
+
+  it("expresses difficulty relative to the selected team and venue", () => {
+    const elite = { score: 0.9, rank: 1, fieldSize: 3, label: "Elite" as const, primaryMetric: "FPI", primaryValue: 25 };
+    const average = { score: 0.5, rank: 2, fieldSize: 3, label: "Even" as const, primaryMetric: "FPI", primaryValue: 5 };
+    expect(calculateMatchupAdvantage(elite, average, "neutral")).toMatchObject({ advantage: 0.4, label: "Strongly favored" });
+    expect(calculateMatchupAdvantage(average, elite, "neutral")).toMatchObject({ advantage: -0.4, label: "Major underdog" });
+    expect(calculateMatchupAdvantage(average, average, "home")).toMatchObject({ advantage: 0.035, label: "Toss-up" });
+    expect(calculateMatchupAdvantage(null, average, "home")).toBeNull();
   });
 });

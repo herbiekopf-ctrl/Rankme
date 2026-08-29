@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/clients";
-import { buildTeamStrengthIndex, signatureResults, TEAM_STRENGTH_KEYS } from "@/lib/domain/scheduleInsights";
+import { buildTeamStrengthIndex, calculateMatchupAdvantage, signatureResults, TEAM_STRENGTH_KEYS } from "@/lib/domain/scheduleInsights";
 import type { EntityAnalyticsSnapshot, EntityAttributeValue, EntityGameSnapshot } from "@/lib/domain/types";
 
 export const runtime = "nodejs";
@@ -81,6 +81,7 @@ export async function GET(request: Request) {
     const targetRelationshipByGame = new Map(targetRelationships.map((row) => [row.from_entity_id, row.relationship_type]));
     const opponentById = new Map((opponentEntitiesResult.data ?? []).map((opponent) => [opponent.id, opponent]));
     const strengthByEntityId = buildTeamStrengthIndex(strengthValues);
+    const selectedTeamStrength = strengthByEntityId.get(entityId);
 
     const games: EntityGameSnapshot[] = gameEntitiesResult.data.filter((game) => attributes.has(game.id)).map((game): EntityGameSnapshot => {
       const data = attributes.get(game.id) ?? {};
@@ -98,6 +99,8 @@ export async function GET(request: Request) {
       const opponentEntityId = opponentIdByGame.get(game.id) ?? null;
       const opponent = opponentEntityId ? opponentById.get(opponentEntityId) : null;
       const strength = opponentEntityId ? strengthByEntityId.get(opponentEntityId) : null;
+      const location: EntityGameSnapshot["location"] = data.neutralSite === true ? "neutral" : isHome ? "home" : "away";
+      const matchup = calculateMatchupAdvantage(selectedTeamStrength, strength, location);
       return {
         id: game.id,
         week: typeof data.week === "number" ? data.week : null,
@@ -106,7 +109,7 @@ export async function GET(request: Request) {
         opponentEntityId,
         opponentImageUrl: opponent?.image_url ?? null,
         opponentColor: opponent?.color ?? null,
-        location: data.neutralSite === true ? "neutral" : isHome ? "home" : "away",
+        location,
         completed,
         result,
         teamScore,
@@ -119,6 +122,9 @@ export async function GET(request: Request) {
         difficultyLabel: strength?.label ?? null,
         difficultyMetric: strength?.primaryMetric ?? null,
         difficultyMetricValue: strength?.primaryValue ?? null,
+        matchupAdvantage: matchup?.advantage ?? null,
+        matchupPosition: matchup?.position ?? null,
+        matchupLabel: matchup?.label ?? null,
       };
     }).sort((left, right) => (left.week ?? 99) - (right.week ?? 99) || String(left.date).localeCompare(String(right.date)));
     const signature = signatureResults(games);

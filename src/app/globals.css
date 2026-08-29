@@ -1715,3 +1715,118 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .analytics-schedule li { grid-template-columns: 31px 28px minmax(0,1fr) auto; grid-template-rows: auto auto; }
   .analytics-schedule .schedule-next-divider { grid-template-columns: 1fr; }
 }
+
+/* Rankings: current Top 25 first, viewing before editing, and weekly movement. */
+.rankings-page { padding-top: 26px; }
+.rankings-loading { min-height: 360px; display: grid; place-content: center; text-align: center; }
+.top25-hero { overflow: hidden; margin-bottom: 28px; color: #eef4ef; background: #102d20; border: 1px solid #244838; border-radius: 16px; box-shadow: 0 26px 68px rgba(7,32,19,.18); }
+.top25-hero > header { min-height: 132px; display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 24px 28px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.top25-hero .kicker { margin-bottom: 5px; color: var(--gold); }
+.top25-hero h1 { margin: 0; font-family: Georgia,serif; font-size: clamp(38px,5vw,58px); font-weight: 500; letter-spacing: -.045em; }
+.top25-hero h1 span { color: #9fb3a7; font-size: .48em; letter-spacing: -.015em; white-space: nowrap; }
+.top25-hero header p:last-child { margin: 7px 0 0; color: #98aa9f; font-size: 10px; }
+.top25-hero-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; }
+.history-toggle, .ranking-entry-button, .ranking-expand-button { min-height: 40px; padding: 0 12px; border: 1px solid #aebeb4; border-radius: 7px; cursor: pointer; color: #265e45; background: #fffdf8; font-size: 9px; font-weight: 900; }
+.history-toggle { color: #e9efeb; background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.2); }
+.history-toggle.is-active { color: #153c2b; background: var(--gold); border-color: var(--gold); }
+.history-toggle:disabled, .ranking-entry-button:disabled { cursor: wait; opacity: .45; }
+.ranking-entry-button { color: #153c2b; background: var(--gold); border-color: var(--gold); }
+.ranking-entry-button span { margin-left: 5px; font-size: 13px; }
+.top25-hero > .browse-consensus-list { margin: 0; padding: 13px 16px 17px; }
+.browse-consensus-list.is-top25 { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: repeat(13,50px); grid-auto-flow: column; gap: 0 18px; }
+.browse-consensus-list.is-top25 li { min-height: 50px; grid-template-columns: 34px 39px minmax(0,1fr) auto; gap: 8px; padding: 4px 7px; color: #edf3ef; background: transparent; border-bottom: 1px solid rgba(255,255,255,.075); border-radius: 0; }
+.browse-consensus-list.is-top25 li > b { color: var(--gold); font-size: 16px; }
+.browse-consensus-list.is-top25 li > strong { overflow: visible; color: #f0f4f1; font-size: 11px; text-overflow: clip; white-space: normal; }
+.browse-consensus-list.is-top25 li > span { color: #82968a; font-size: 7px; }
+.top25-empty { margin: 18px; color: #9caf9f; background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.2); }
+.top25-empty strong { color: #eef3ef; }
+
+.ranking-view-card { transform: none !important; }
+.ranking-view-card > p.poll-creator { min-height: 0; }
+.ranking-view-card .browse-consensus-list li { grid-template-columns: 24px 31px minmax(0,1fr) auto; }
+.ranking-view-card .browse-consensus-list li > strong { overflow: visible; text-overflow: clip; white-space: normal; }
+.ranking-expand-button { width: 100%; margin: 7px 0 10px; color: #225f43; background: #e3ebe5; border-color: transparent; }
+.ranking-view-card footer .ranking-entry-button { min-height: 36px; }
+.other-rankings-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 36px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.other-rankings-heading h2 { margin: 2px 0 0; font-family: Georgia,serif; font-size: 31px; font-weight: 500; }
+
+.ranking-history { margin: 0; padding: 22px 18px 20px; color: #243a2f; background: #f3f1e9; border-top: 1px solid rgba(255,255,255,.1); }
+.ranking-history-intro { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 15px; }
+.ranking-history-intro .kicker { color: #267052; }
+.ranking-history-intro h3 { margin: 2px 0 4px; font-family: Georgia,serif; font-size: 26px; font-weight: 500; }
+.ranking-history-intro p:last-child { margin: 0; color: #67766e; font-size: 9px; }
+.ranking-history-selection { min-width: 190px; min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 5px 9px; border: 1px solid #b7c6bc; border-radius: 8px; cursor: pointer; color: #244b38; background: #fff; text-align: left; }
+.ranking-history-selection > span { min-width: 0; display: grid; gap: 2px; }
+.ranking-history-selection strong, .ranking-history-selection small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-history-selection strong { font-size: 10px; }
+.ranking-history-selection small { color: #65756b; font-size: 7px; }
+.ranking-history-scroll { overflow: hidden; background: #ebeae3; border: 1px solid #d0d5d0; border-radius: 10px; }
+.ranking-history-canvas { min-width: 0; }
+.ranking-history-headings { height: 67px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); background: #f9f7f1; border-bottom: 1px solid #cdd4ce; }
+.ranking-history-headings > div { min-width: 0; display: grid; align-content: center; justify-items: center; gap: 2px; padding: 6px; color: #52665a; border-left: 1px solid #dde1dc; text-align: center; }
+.ranking-history-headings > div:first-child { border-left: 0; }
+.ranking-history-headings > div.is-current { color: #fff; background: #1b5c40; }
+.ranking-history-headings span { color: #27805a; font-size: 7px; font-weight: 950; letter-spacing: .12em; }
+.ranking-history-headings .is-current span { color: var(--gold); }
+.ranking-history-headings strong { max-width: 100%; overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.ranking-history-headings small { color: #7b887f; font-size: 6px; }
+.ranking-history-headings .is-current small { color: #b8c9bf; }
+.ranking-history-plot { position: relative; background: linear-gradient(90deg,transparent 0 66.66%,rgba(38,112,82,.08) 66.66% 100%); }
+.ranking-history-plot::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(to bottom,transparent 0 33px,rgba(68,91,78,.08) 33px 34px); pointer-events: none; }
+.ranking-history-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ranking-history-plot path { fill: none; stroke: var(--team-line); stroke-width: 1.1; vector-effect: non-scaling-stroke; opacity: .32; transition: opacity .15s,stroke-width .15s; }
+.ranking-history-plot path.is-selected { stroke-width: 3; opacity: .95; }
+.ranking-history-plot path.is-muted { opacity: .06; }
+.ranking-history-node { position: absolute; z-index: 2; display: flex; align-items: center; gap: 2px; padding: 0; border: 0; cursor: pointer; color: #53675b; background: transparent; transform: translate(-50%,-50%); transition: opacity .15s,transform .15s; }
+.ranking-history-node > span { min-width: 18px; padding: 2px 3px; color: #375545; background: rgba(255,255,255,.94); border: 1px solid #c5cec8; border-radius: 999px; font-size: 6px; font-weight: 900; }
+.ranking-history-node .entity-mark { background: #fff; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 7px rgba(10,36,22,.2); }
+.ranking-history-node.is-current { z-index: 3; transform: translate(-50%,-50%) scale(1.08); }
+.ranking-history-node.is-current > span { color: #fff; background: #1f6849; border-color: #1f6849; }
+.ranking-history-node.is-selected { z-index: 5; transform: translate(-50%,-50%) scale(1.22); }
+.ranking-history-node.is-selected .entity-mark { outline: 3px solid var(--gold); }
+.ranking-history-node.is-muted { opacity: .18; }
+.ranking-history-empty { min-height: 130px; display: grid; place-content: center; gap: 4px; margin: 18px; color: #68776e; background: #efeee7; border: 1px dashed #c5cec7; border-radius: 9px; text-align: center; }
+.ranking-history-empty strong { color: #315141; font-family: Georgia,serif; font-size: 17px; font-weight: 500; }
+.ranking-history-empty span { font-size: 8px; }
+
+/* Schedule comparison is relative to the selected team, not opponent quality alone. */
+.difficulty-legend i, .game-difficulty i { background: linear-gradient(90deg,#bc5049,#ddc364,#4ea56b); }
+.game-difficulty.is-favored span { color: #176743; }
+.game-difficulty.is-underdog span { color: #9d4039; }
+.game-difficulty.is-even span { color: #78671f; }
+.game-difficulty.is-missing { opacity: .55; }
+
+@media (max-width: 760px) {
+  .rankings-page { padding-top: 10px; }
+  .top25-hero { margin-inline: -6px; border-radius: 11px; }
+  .top25-hero > header { min-height: 0; align-items: flex-start; flex-direction: column; gap: 14px; padding: 18px 15px 14px; }
+  .top25-hero h1 { font-size: 38px; }
+  .top25-hero h1 span { display: block; margin-top: 4px; font-size: 15px; }
+  .top25-hero-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .top25-hero-actions button { min-width: 0; padding-inline: 7px; }
+  .top25-hero > .browse-consensus-list { padding: 7px 10px 12px; }
+  .browse-consensus-list.is-top25 { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; gap: 0; }
+  .browse-consensus-list.is-top25 li { min-height: 46px; grid-template-columns: 29px 36px minmax(0,1fr); padding-inline: 3px; }
+  .browse-consensus-list.is-top25 li > span { display: none; }
+  .browse-consensus-list.is-top25 li > strong { font-size: 10px; }
+  .ranking-view-card .browse-consensus-list li { grid-template-columns: 22px 28px minmax(0,1fr); }
+  .ranking-view-card .browse-consensus-list li > span { display: none; }
+  .ranking-view-card footer { align-items: stretch; grid-template-columns: 1fr; }
+  .ranking-view-card footer .ranking-entry-button { width: 100%; }
+  .other-rankings-heading { align-items: flex-start; }
+  .ranking-history { padding: 16px 7px 12px; }
+  .ranking-history-intro { align-items: flex-start; flex-direction: column; gap: 10px; padding-inline: 4px; }
+  .ranking-history-selection { width: 100%; }
+  .ranking-history-headings { height: 61px; }
+  .ranking-history-headings strong { font-size: 7px; }
+  .ranking-history-headings small { display: none; }
+  .ranking-history-node { gap: 0; }
+  .ranking-history-node > span { min-width: 16px; margin-right: -3px; font-size: 5px; }
+  .ranking-history-node .mark-small { width: 27px; height: 27px; }
+}
+
+@media (max-width: 420px) {
+  .top25-hero-actions { grid-template-columns: 1fr; }
+  .other-rankings-heading { flex-direction: column; }
+  .other-rankings-heading .button { width: 100%; }
+}

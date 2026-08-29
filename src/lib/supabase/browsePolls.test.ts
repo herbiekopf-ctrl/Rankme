@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { browsePollHref, participatedPolls, popularPolls, recentPolls, type BrowsePoll } from "./browsePolls";
+import { browsePollHref, displayRankingPeriod, isPrimaryTop25, participatedPolls, popularPolls, recentPolls, type BrowsePoll } from "./browsePolls";
 
 function poll(overrides: Partial<BrowsePoll>): BrowsePoll {
   return {
@@ -26,6 +26,7 @@ function poll(overrides: Partial<BrowsePoll>): BrowsePoll {
     periodTitle: "One-time poll",
     myResponseStatus: null,
     preview: [],
+    history: [],
     ...overrides,
   };
 }
@@ -48,5 +49,11 @@ describe("browse polls", () => {
     const submitted = poll({ id: "submitted", myResponseStatus: "published" });
     const draft = poll({ id: "draft", myResponseStatus: "draft" });
     expect(participatedPolls([untouched, submitted, draft]).map((item) => item.id).sort()).toEqual(["draft", "submitted"]);
+  });
+
+  it("identifies the primary Top 25 and presents weekly labels cleanly", () => {
+    expect(isPrimaryTop25(poll({ slug: "official-top-25", templateKind: "official", entityType: "team", length: 25 }))).toBe(true);
+    expect(isPrimaryTop25(poll({ slug: "best-stadiums", entityType: "stadium", length: 25 }))).toBe(false);
+    expect(displayRankingPeriod("2026 response week of Aug 24")).toBe("Week of Aug 24");
   });
 });

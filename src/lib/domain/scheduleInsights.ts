@@ -15,6 +15,14 @@ export type TeamStrengthProfile = {
   primaryValue: number | null;
 };
 
+export type MatchupAdvantageLabel = "Strongly favored" | "Favored" | "Slightly favored" | "Toss-up" | "Slight underdog" | "Underdog" | "Major underdog";
+
+export type MatchupAdvantage = {
+  advantage: number;
+  position: number;
+  label: MatchupAdvantageLabel;
+};
+
 const METRICS = [
   { key: "fpi", direction: "desc" as const, weight: 1.2, label: "FPI" },
   { key: "spOverall", direction: "desc" as const, weight: 1.2, label: "SP+" },
@@ -25,6 +33,27 @@ const METRICS = [
 ];
 
 export const TEAM_STRENGTH_KEYS = METRICS.map((metric) => metric.key);
+
+function matchupLabel(advantage: number): MatchupAdvantageLabel {
+  if (advantage >= 0.3) return "Strongly favored";
+  if (advantage >= 0.15) return "Favored";
+  if (advantage >= 0.06) return "Slightly favored";
+  if (advantage > -0.06) return "Toss-up";
+  if (advantage > -0.15) return "Slight underdog";
+  if (advantage > -0.3) return "Underdog";
+  return "Major underdog";
+}
+
+export function calculateMatchupAdvantage(
+  selectedTeam: TeamStrengthProfile | null | undefined,
+  opponent: TeamStrengthProfile | null | undefined,
+  location: "home" | "away" | "neutral",
+): MatchupAdvantage | null {
+  if (!selectedTeam || !opponent) return null;
+  const locationAdjustment = location === "home" ? 0.035 : location === "away" ? -0.035 : 0;
+  const advantage = Math.max(-1, Math.min(1, selectedTeam.score - opponent.score + locationAdjustment));
+  return { advantage, position: (advantage + 1) / 2, label: matchupLabel(advantage) };
+}
 
 function strengthLabel(score: number): TeamStrengthProfile["label"] {
   if (score >= 0.82) return "Elite";
