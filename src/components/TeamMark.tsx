@@ -14,7 +14,7 @@ export function TeamMark({ entity, size = "medium" }: { entity: RankableEntity; 
 
   if (media.kind === "image" && media.imageUrl && !imageFailed) {
     return <span className={`entity-mark mark-${size}`} style={markStyle} data-media-role={media.role}>
-      <Image src={media.imageUrl} alt="" width={dimensions} height={dimensions} sizes={`${dimensions}px`} unoptimized onError={() => setFailedImageUrl(media.imageUrl ?? null)} />
+      <Image src={media.imageUrl} alt="" width={dimensions} height={dimensions} sizes={`${dimensions}px`} onError={() => setFailedImageUrl(media.imageUrl ?? null)} />
     </span>;
   }
   return <span className={`entity-mark mark-${size}`} style={markStyle} data-media-role="fallback">{media.initials}</span>;

@@ -1736,15 +1736,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .browse-consensus-list.is-top25 { grid-template-columns: repeat(2,minmax(0,1fr)); grid-template-rows: repeat(13,50px); grid-auto-flow: column; gap: 0 18px; }
 .browse-consensus-list.is-top25 li { min-height: 50px; grid-template-columns: 34px 39px minmax(0,1fr) auto; gap: 8px; padding: 4px 7px; color: #edf3ef; background: transparent; border-bottom: 1px solid rgba(255,255,255,.075); border-radius: 0; }
 .browse-consensus-list.is-top25 li > b { color: var(--gold); font-size: 16px; }
-.browse-consensus-list.is-top25 li > strong { overflow: visible; color: #f0f4f1; font-size: 11px; text-overflow: clip; white-space: normal; }
-.browse-consensus-list.is-top25 li > span { color: #82968a; font-size: 7px; }
+.browse-consensus-list.is-top25 li > strong { overflow: visible; color: #f0f4f1; font-size: 11px; text-overflow: clip; white-space: nowrap; }
+.browse-consensus-list.is-top25 li > .ballot-count { color: #82968a; font-size: 7px; }
 .top25-empty { margin: 18px; color: #9caf9f; background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.2); }
 .top25-empty strong { color: #eef3ef; }
 
 .ranking-view-card { transform: none !important; }
 .ranking-view-card > p.poll-creator { min-height: 0; }
 .ranking-view-card .browse-consensus-list li { grid-template-columns: 24px 31px minmax(0,1fr) auto; }
-.ranking-view-card .browse-consensus-list li > strong { overflow: visible; text-overflow: clip; white-space: normal; }
+.ranking-view-card .browse-consensus-list li > strong { overflow: visible; text-overflow: clip; white-space: nowrap; }
 .ranking-expand-button { width: 100%; margin: 7px 0 10px; color: #225f43; background: #e3ebe5; border-color: transparent; }
 .ranking-view-card footer .ranking-entry-button { min-height: 36px; }
 .other-rankings-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; margin: 36px 0 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -1806,11 +1806,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .top25-hero-actions button { min-width: 0; padding-inline: 7px; }
   .top25-hero > .browse-consensus-list { padding: 7px 10px 12px; }
   .browse-consensus-list.is-top25 { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-flow: row; gap: 0; }
-  .browse-consensus-list.is-top25 li { min-height: 46px; grid-template-columns: 29px 36px minmax(0,1fr); padding-inline: 3px; }
-  .browse-consensus-list.is-top25 li > span { display: none; }
+  .browse-consensus-list.is-top25 li { min-height: 42px; grid-template-columns: 29px 32px minmax(0,1fr); padding-inline: 3px; }
+  .browse-consensus-list.is-top25 li > .ballot-count { display: none; }
   .browse-consensus-list.is-top25 li > strong { font-size: 10px; }
+  .browse-consensus-list.is-top25 li > .entity-mark { display: grid; width: 32px; height: 32px; }
   .ranking-view-card .browse-consensus-list li { grid-template-columns: 22px 28px minmax(0,1fr); }
-  .ranking-view-card .browse-consensus-list li > span { display: none; }
+  .ranking-view-card .browse-consensus-list li > .ballot-count { display: none; }
+  .ranking-view-card .browse-consensus-list li > .entity-mark { display: grid; }
   .ranking-view-card footer { align-items: stretch; grid-template-columns: 1fr; }
   .ranking-view-card footer .ranking-entry-button { width: 100%; }
   .other-rankings-heading { align-items: flex-start; }
