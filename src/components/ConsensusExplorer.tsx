@@ -51,7 +51,7 @@ function ConsensusRows({ poll, rows, prominent = false }: { poll: BrowsePoll; ro
       <b>#{preview.position}</b>
       <TeamMark entity={previewEntity(preview, poll.entityType)} size={prominent ? "medium" : "small"} />
       <strong>{preview.name}</strong>
-      <span>{preview.ballotCount}/{poll.selectedResponseCount ?? poll.responseCount} ballots</span>
+      <span className="ballot-count">{preview.ballotCount}/{poll.selectedResponseCount ?? poll.responseCount} ballots</span>
     </li>)}
   </ol>;
 }
