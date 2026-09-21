@@ -10,6 +10,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { QuickTeamPicker } from "./QuickTeamPicker";
 import { SortableEntityCard } from "../SortableEntityCard";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 
@@ -49,6 +50,8 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
       </div>
 
       <div className="rw-pane-body" data-scroll-region="ranking">
+        <QuickTeamPicker controller={controller} />
+        <p className="ranking-instructions">Drag the grip to reorder, or tap a rank number to move a team.</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={history.present} strategy={verticalListSortingStrategy}>
             <div className="ranking-list">
@@ -58,6 +61,8 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
                   entity={entity}
                   rank={index + 1}
                   template={template}
+                  rankingLength={history.present.length}
+                  onPosition={(position) => controller.moveRankedEntity(entity.id, position)}
                   onMove={(direction) => controller.moveRankedEntity(entity.id, index + direction)}
                   onRemove={() => controller.removeRankedEntity(entity.id)}
                   onDetails={() => controller.setDetailId(entity.id)}
@@ -68,7 +73,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
               {Array.from({ length: Math.min(remaining, history.present.length ? 3 : 5) }, (_, index) => (
                 <div className="empty-rank" key={history.present.length + index + 1}>
                   <span>{history.present.length + index + 1}</span>
-                  <p>{history.present.length ? "Drop or add the next pick" : "Add a team from Rank by Metric"}</p>
+                  <p>{history.present.length ? "Drop or add the next pick" : "Search above to add a team"}</p>
                 </div>
               ))}
             </div>

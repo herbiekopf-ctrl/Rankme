@@ -17,7 +17,7 @@ function NavIcon({ name }: { name: NavIconName }) {
 const navItems: Array<{ href: string; label: string; icon: NavIconName }> = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/rankings", label: "Rankings", icon: "trends" },
-  { href: "/create", label: "Create", icon: "create" },
+  { href: "/rank/top-25", label: "My Top 25", icon: "create" },
   { href: "/profile", label: "Profile", icon: "profile" },
 ];
 

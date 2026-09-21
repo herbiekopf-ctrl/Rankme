@@ -1,20 +1,26 @@
 import Link from "next/link";
+import { collegeFootballSeason, localRankingPeriod } from "@/lib/domain/rankingPeriods";
+
+export const dynamic = "force-dynamic";
 
 export default function HomePage() {
+  const season = collegeFootballSeason();
+  const period = localRankingPeriod("weekly", season);
   return (
     <main className="home-hub">
       <section className="home-ballot-hero shell">
         <div className="home-ballot-copy">
-          <div className="home-main-event"><span>●</span> WEEKLY TOP 25 · 2026</div>
+          <div className="home-main-event"><span>●</span> {period.periodTitle} · {season}</div>
           <p className="kicker">YOUR OPINION. YOUR ORDER.</p>
           <h1>Make your own<br /><em>AP-style Top 25.</em></h1>
-          <p>Pick 25 teams. Put them in order. Publish your ballot.</p>
+          <p>Pick 25 teams. Put them in order. Submit your vote.</p>
           <div className="home-ballot-actions">
             <Link className="home-start-ballot" href="/rank/top-25">
               Start my Top 25 <span aria-hidden="true">→</span>
             </Link>
-            <small>No setup. Your draft saves automatically.</small>
+            <small>Drafts save as you go. Submit when you&apos;re ready.</small>
           </div>
+          <Link className="home-ap-link" href="/rankings?view=ap">Just looking? See the AP poll & every voter&apos;s ballot →</Link>
         </div>
 
         <Link className="home-ballot-card" href="/rank/top-25" aria-label="Start your AP-style Top 25 ballot">

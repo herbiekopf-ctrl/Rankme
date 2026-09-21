@@ -20,8 +20,8 @@ export function MobileRankingTray({ controller }: { controller: RankingWorkspace
         aria-pressed={controller.mobileMode === "analyze"}
         onClick={() => controller.setMobileMode("analyze")}
       >
-        <span>RANK BY METRIC</span>
-        <strong>{controller.metricEntities.length}</strong>
+        <span>NEED HELP?</span>
+        <strong>Stats & Model</strong>
       </button>
     </nav>
   );

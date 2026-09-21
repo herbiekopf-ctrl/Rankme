@@ -6,7 +6,7 @@ import { RankingPositionControl } from "../RankingPositionControl";
 import { TeamMark } from "../TeamMark";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 import { calculateCustomMetricScores, formatMetricValue, metricDesirability, metricHeatPresentation, metricPopulation, rankByMetric } from "@/lib/domain/metrics";
-import { formatAttribute } from "@/lib/utils";
+import { formatAttribute, timeAgo } from "@/lib/utils";
 
 export function AnalysisPane({ controller }: { controller: RankingWorkspaceController }) {
   const { dataset, history, metricEntities, template } = controller;
@@ -44,6 +44,7 @@ export function AnalysisPane({ controller }: { controller: RankingWorkspaceContr
 
       <div className="rw-pane-body rw-analysis-body" data-scroll-region="analysis">
         <div className="rw-candidate-controls">
+          <p className="metric-tool-explainer">Stats snapshot updated {timeAgo(dataset.refreshedAt)}{dataset.stale ? " · Older data: use with care." : "."} AP ranks here are from this snapshot.</p>
           <label className="metric-rank-select">
             <span>Rank teams by</span>
             <select value={controller.candidateSort} onChange={(event) => controller.setCandidateSort(event.target.value)} aria-label="Rank teams by metric">

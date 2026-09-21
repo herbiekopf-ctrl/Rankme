@@ -1,5 +1,7 @@
 "use client";
 
+import { collegeFootballSeason } from "@/lib/domain/rankingPeriods";
+
 import type { Json } from "./database.types";
 import { getBrowserSupabaseClient, requirePermanentRankedUser } from "./browser";
 import { customPollEntityType } from "@/lib/domain/customPolls";
@@ -137,7 +139,7 @@ async function lookupBuiltInTemplateVersionId(template: RankingTemplate): Promis
 async function resolveRankingTarget(template: RankingTemplate, config?: CustomPollConfig): Promise<RelationalRankingTarget | null> {
   const templateVersionId = config?.remoteTemplateVersionId ?? (!config ? await lookupBuiltInTemplateVersionId(template) : null);
   if (!templateVersionId) return null;
-  return { templateVersionId, datasetVersionId: await lookupDatasetVersionId(config?.year ?? 2026) };
+  return { templateVersionId, datasetVersionId: await lookupDatasetVersionId(config?.year ?? collegeFootballSeason()) };
 }
 
 export async function loadCurrentRankingPeriod(template: RankingTemplate, config?: CustomPollConfig): Promise<RankingPeriodContext | null> {

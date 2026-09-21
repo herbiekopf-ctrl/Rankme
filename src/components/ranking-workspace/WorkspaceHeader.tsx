@@ -1,5 +1,6 @@
 "use client";
 
+import { votingDeadline } from "@/lib/domain/rankingPeriods";
 import Link from "next/link";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 
@@ -14,7 +15,7 @@ function saveLabel(state: RankingWorkspaceController["saveState"]) {
 export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceController }) {
   const { history, mobileMode, periodContext, periodReady, saveState, template, validationErrors } = controller;
   const periodLabel = periodContext.responseCadence === "weekly"
-    ? "THIS WEEK"
+    ? "YOU ARE VOTING FOR"
     : periodContext.responseCadence === "seasonal"
       ? "THIS SEASON"
       : "THIS POLL";
@@ -32,7 +33,7 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
         <div className="rw-period-identity">
           <span>{periodLabel}</span>
           <strong>{periodContext.periodTitle}</strong>
-          <small>One vote per person. Revise it while this period is open.</small>
+          <small>{periodContext.season} season · {votingDeadline(periodContext) || "One vote per person"}</small>
         </div>
         <div className="rw-period-state">
           <b>{responseLabel}</b>
@@ -41,8 +42,9 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
           {periodContext.status === "draft" ? <small>Continue the same saved list.</small> : null}
           {!periodContext.status && periodReady ? <small>Your first save opens this period&apos;s list.</small> : null}
         </div>
-        {controller.periodLoadError ? <small className="rw-period-warning">Saved status could not sync. Your local draft is still available.</small> : null}
+        {controller.periodLoadError ? <small className="rw-period-warning">Voting status is unavailable. Your draft stays on this device; submission requires a connection.</small> : null}
       </div>
+      {controller.isPeriodLocked && periodReady ? <p role="status">This voting period is closed. <button type="button" onClick={() => window.location.reload()}>Open the current week</button></p> : null}
       <div className="rw-mode-switch" aria-label="Workspace mode">
         <button
           type="button"
@@ -59,15 +61,15 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
           aria-pressed={mobileMode === "analyze"}
           onClick={() => controller.setMobileMode("analyze")}
         >
-          <span>RANK BY METRIC</span>
-          <strong>{controller.metricEntities.length} teams</strong>
+          <span>NEED HELP?</span>
+          <strong>Stats & Live Model</strong>
         </button>
       </div>
 
       <div className="rw-toolbar-status">
         <div className="draft-status" role="status">
           <span className={saveState === "saving" ? "saving-dot" : "saved-dot"} />
-          {saveLabel(saveState)}
+          {controller.hasPublishedChanges ? "Unpublished changes · Save update to count your vote" : `${saveLabel(saveState)}${periodContext.status !== "published" ? " · Not submitted" : ""}`}
         </div>
         <div className="rw-history-actions">
           <button type="button" onClick={controller.undo} disabled={!history.past.length} aria-label="Undo last ranking change">↶ <span>Undo</span></button>
@@ -90,7 +92,7 @@ export function WorkspaceHeader({ controller }: { controller: RankingWorkspaceCo
               ? "Checking period…"
               : periodContext.status === "published"
                 ? controller.editingPublished ? "Save update" : periodContext.editable ? "Edit ranking" : "Period closed"
-                : template.publishLabel}
+                : "Review & Submit"}
           </button>
         </div>
       </div>

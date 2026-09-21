@@ -1832,3 +1832,78 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .other-rankings-heading { flex-direction: column; }
   .other-rankings-heading .button { width: 100%; }
 }
+
+/* Viewing is read-only; editing always lives in My Top 25. */
+.ranking-view-tabs { display: flex; align-items: center; gap: 6px; padding: 5px; margin-bottom: 16px; background: #e5e9e1; border-radius: 12px; }
+.ranking-view-tabs button, .ranking-view-tabs a { flex: 1; display: grid; place-items: center; min-height: 46px; padding: 8px 12px; border: 0; border-radius: 8px; background: transparent; color: #315343; font-size: 13px; font-weight: 750; text-decoration: none; cursor: pointer; }
+.ranking-view-tabs button[aria-pressed="true"] { color: #fffdf5; background: #184c35; box-shadow: 0 2px 6px #12302220; }
+.rankings-page .top25-hero header small { display: block; margin-top: 6px; color: #b9cbbf; font-size: 11px; line-height: 1.5; }
+.rankings-page .top25-hero header p:not(.kicker) { color: #d0ded4; font-size: 13px; }
+.rankings-page .top25-hero .ranking-entry-button { display: flex; align-items: center; justify-content: center; min-height: 46px; font-size: 13px; text-decoration: none; }
+.rankings-page .top25-hero-actions { flex-direction: row-reverse; }
+.rankings-page .browse-consensus-list.is-top25 li > strong { font-size: 14px; }
+.rankings-page details.browse-consensus-controls { display: block; padding: 16px; }
+.browse-consensus-controls summary { cursor: pointer; font-weight: 750; font-size: 14px; padding: 7px 0; }
+.browse-consensus-controls[open] summary { margin-bottom: 18px; }
+.ap-voter-select { display: grid; gap: 8px; padding: 16px 20px 0; color: #d7e6dd; font-size: 12px; }
+.ap-voter-select select { width: 100%; max-width: 100%; min-height: 48px; padding: 10px; border: 1px solid #91a697; border-radius: 8px; background: #fffdf5; color: #193d2b; font: inherit; font-size: 16px; }
+.ap-context { padding: 0 20px; color: #b9cbbf; font-size: 12px; }
+.ap-ranking-list { margin: 0; padding: 0 20px 16px; list-style: none; }
+.ap-ranking-list li { display: grid; grid-template-columns: 28px 32px minmax(0,1fr) auto; gap: 10px; align-items: center; min-height: 46px; border-bottom: 1px solid #ffffff15; }
+.ap-ranking-list b { color: var(--gold); font-size: 16px; }
+.ap-ranking-list strong { color: #f5f7f3; font-size: 14px; white-space: nowrap; }
+.ap-ranking-list small { color: #b9cbbf; font-size: 11px; font-variant-numeric: tabular-nums; }
+.ap-source { padding: 12px 20px 20px; }
+.ap-source a { color: #c6d6ca; font-size: 12px; }
+.quick-team-picker { padding: 12px; border: 1px solid #cbd6ca; border-radius: 10px; background: #f6f8f1; }
+.quick-team-picker > label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 750; color: #274834; }
+.quick-team-picker input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #a7b6a8; border-radius: 7px; font-size: 16px; background: white; color: #193d2b; }
+.quick-team-picker ul { margin: 8px 0 0; padding: 0; list-style: none; }
+.quick-team-picker li { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 6px; min-height: 48px; border-bottom: 1px solid #dae2d8; }
+.quick-team-picker button { min-height: 44px; padding: 6px 8px; border: 0; border-radius: 6px; background: #dfeadb; color: #204d32; font-size: 13px; font-weight: 700; cursor: pointer; }
+.quick-team-picker button:disabled { background: transparent; color: #6d7d70; cursor: default; }
+.quick-team-picker .quick-team-name { text-align: left; background: transparent; white-space: nowrap; padding-inline: 0; }
+.quick-picker-status { display: block; min-height: 16px; margin-top: 6px; color: #376744; font-size: 11px; }
+.ballot-quick-start { display: grid; gap: 6px; margin-bottom: 16px; }
+.ballot-quick-start small { color: #576959; font-size: 11px; }
+.home-ap-link { display: inline-block; margin-top: 18px; color: #c8dacd; font-size: 13px; line-height: 1.6; text-underline-offset: 4px; }
+.site-header .account-sign-in { color: #184b35; background: #fffdf4; border: 1px solid #c5d3c7; }
+.ranking-instructions { font-size: 12px; color: #576959; line-height: 1.5; }
+@media (min-width: 821px) {
+  .rw-grid.is-ranking-only { grid-template-columns: minmax(0,1fr); max-width: 760px; margin-inline: auto; }
+  .rw-grid.is-ranking-only .rw-analysis-pane { display: none; }
+  .rw-grid.is-ranking-only .rw-ranking-pane { border-right: 0; }
+}
+.rw-page .rank-number select { width: 42px; min-height: 44px; padding: 0 2px; border: 1px solid #b9c6b9; border-radius: 6px; color: #264b32; background: #f8faf3; font: inherit; font-size: 16px; text-align: center; cursor: pointer; }
+.rw-page .rw-period-identity strong { font-size: 18px; }
+.rw-page .rw-period-identity small { font-size: 12px; }
+.rw-page .rw-toolbar-status .draft-status { font-size: 12px; }
+.rw-page .rw-history-actions .publish-button { min-height: 46px; font-size: 13px; }
+.publish-period { padding: 12px; color: #224d35; background: #e8f0e1; border-radius: 8px; line-height: 1.6; }
+.ranking-view-tabs button:focus-visible, .quick-team-picker button:focus-visible, .rank-number select:focus-visible { outline: 3px solid #ae842a; outline-offset: 2px; }
+@media (max-width: 760px) {
+  .ranking-view-tabs { flex-wrap: wrap; }
+  .ranking-view-tabs button { padding-inline: 5px; font-size: 12px; }
+  .ranking-view-tabs a { flex-basis: 100%; min-height: 36px; font-size: 12px; }
+  .rankings-page .browse-consensus-list.is-top25 li > strong { font-size: 13px; }
+  .ap-ranking-list { padding-inline: 12px; }
+  .ap-ranking-list li { gap: 7px; }
+  .ap-ranking-list strong { font-size: 13px; }
+  .rw-page .ranked-card { grid-template-columns: 24px 42px 30px minmax(0,1fr) 32px; gap: 5px; padding: 5px; }
+  .rw-page .ranked-card .rank-controls { display: flex; }
+  .rw-page .ranked-card .rank-controls button { min-width: 32px; min-height: 44px; }
+  .rw-page .ranked-card .ranked-identity strong { font-size: 12px; white-space: nowrap; }
+  .rw-page .ranked-card .drag-handle { width: 24px; min-height: 44px; touch-action: none; }
+  .rw-page .rw-mode-switch strong { font-size: 12px; }
+  .rw-page .rw-period-strip { padding: 12px; }
+  .rw-page .rw-period-identity strong { font-size: 17px; }
+  .rw-page .rw-period-identity small { display: block; grid-column: 1 / -1; font-size: 11px; line-height: 1.5; }
+  .rw-page .rw-period-identity { grid-template-columns: minmax(0,1fr); }
+  .rw-page .rw-period-warning { display: block; font-size: 11px; }
+  .rw-page .rw-period-strip { flex-wrap: wrap; gap: 8px; }
+  .rw-page .rw-heading { padding-block: 12px; gap: 6px; }
+  .rw-page .rw-heading .back-link { margin-bottom: 6px; }
+  .rw-page .rw-heading .builder-meta { display: none; }
+  .rw-page .quick-team-picker { padding: 9px; }
+  .rw-page .quick-picker-status:empty { display: none; }
+}

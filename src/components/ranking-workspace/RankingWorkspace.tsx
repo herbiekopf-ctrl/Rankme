@@ -22,16 +22,16 @@ export function RankingWorkspace({
   customConfig?: CustomPollConfig;
 }) {
   const controller = useRankingWorkspace({ template, initialDataset, customConfig });
-  const sourceBadge = initialDataset.connected ? "Season data ready" : "Season data unavailable";
+  const sourceBadge = initialDataset.connected ? initialDataset.stale ? "Older season snapshot" : "Season data ready" : "Season data unavailable";
 
   return (
     <main className="rw-page">
       <section className="rw-heading shell">
         <div>
-          <Link className="back-link" href={customConfig ? "/create" : "/"}>← {customConfig ? "Create another poll" : "Back to home"}</Link>
+          <Link className="back-link" href={customConfig ? "/create" : "/rankings"}>← {customConfig ? "Create another poll" : "Rankings"}</Link>
           <p className="kicker">{template.eyebrow}</p>
-          <h1>{template.title}</h1>
-          <p>{template.description}</p>
+          <h1>{template.id === "top-25" ? "Your Top 25" : template.title}</h1>
+          <p>Add teams. Put them in order. Submit your vote.</p>
         </div>
         <div className="builder-meta">
           <span className={initialDataset.source === "collegefootballdata" ? "data-badge is-live" : "data-badge"}>{sourceBadge}</span>
@@ -45,11 +45,12 @@ export function RankingWorkspace({
         {!initialDataset.entities.length ? (
           <div className="builder-empty-state">
             <p className="kicker">OPTIONS UNAVAILABLE</p>
-            <h2>This ranking is still loading.</h2>
-            <p>Try again shortly.</p>
+            <h2>Team data is temporarily unavailable.</h2>
+            <p>Your saved rankings have not been changed.</p>
+            <Link className="button button-primary" href="/rankings?view=ap">Explore the AP poll instead</Link>
           </div>
         ) : (
-          <div className="rw-grid">
+          <div className={`rw-grid${controller.mobileMode === "ranking" ? " is-ranking-only" : ""}`}>
             <RankingPane controller={controller} />
             <AnalysisPane controller={controller} />
           </div>
