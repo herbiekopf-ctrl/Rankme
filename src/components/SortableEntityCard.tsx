@@ -11,6 +11,8 @@ export function SortableEntityCard({
   rank,
   template,
   onMove,
+  onPosition,
+  rankingLength,
   onRemove,
   onCompare,
   onDetails,
@@ -20,6 +22,8 @@ export function SortableEntityCard({
   entity: RankableEntity;
   rank: number;
   template: RankingTemplate;
+  onPosition?: (index: number) => void;
+  rankingLength?: number;
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
   onCompare?: () => void;
@@ -37,7 +41,7 @@ export function SortableEntityCard({
       className={`ranked-card${isDragging ? " is-dragging" : ""}${disabled ? " is-locked" : ""}${focused ? " is-focused" : ""}`}
     >
       <button className="drag-handle" {...attributes} {...listeners} disabled={disabled} aria-label={`Drag ${entity.name} from rank ${rank}`}>⠿</button>
-      <span className="rank-number">{rank}</span>
+      <span className="rank-number">{onPosition ? <select value={rank} disabled={disabled} onChange={e => onPosition(Number(e.target.value) - 1)} aria-label={`Move ${entity.name} to rank`}>{Array.from({ length: rankingLength ?? rank }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select> : rank}</span>
       <TeamMark entity={entity} />
       <div className="ranked-identity">
         <button className="ranked-name-button" onClick={onDetails} disabled={!onDetails}><strong>{entity.name}</strong></button>
@@ -45,8 +49,8 @@ export function SortableEntityCard({
       </div>
       <div className="rank-controls" aria-label={`Move ${entity.name}`}>
         {onCompare && <button className="rank-compare" onClick={onCompare} aria-label={`Compare ${entity.name}`}>⇄</button>}
-        <button onClick={() => onMove(-1)} disabled={disabled || rank === 1} aria-label={`Move ${entity.name} up`}>↑</button>
-        <button onClick={() => onMove(1)} disabled={disabled || rank === template.maxLength} aria-label={`Move ${entity.name} down`}>↓</button>
+        {!onPosition ? <><button onClick={() => onMove(-1)} disabled={disabled || rank === 1} aria-label={`Move ${entity.name} up`}>↑</button>
+        <button onClick={() => onMove(1)} disabled={disabled || rank === template.maxLength} aria-label={`Move ${entity.name} down`}>↓</button></> : null}
         <button onClick={onRemove} disabled={disabled} aria-label={`Remove ${entity.name}`}>×</button>
       </div>
     </article>

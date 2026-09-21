@@ -3,6 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ApPollViewer } from "./ApPollViewer";
 import { RankingHistoryChart } from "./RankingHistoryChart";
 import { TeamMark } from "./TeamMark";
 import {
@@ -34,7 +35,7 @@ function subjectLabel(entityType: string): string {
 function rankingActionLabel(poll: BrowsePoll): string {
   if (poll.myResponseStatus === "published") return poll.editable ? "Edit My Ranking" : "View My Ranking";
   if (poll.myResponseStatus === "draft") return poll.editable ? "Continue My Ranking" : "View My Ranking";
-  return poll.editable ? "Create My Ranking" : "View Poll";
+  return poll.editable ? isPrimaryTop25(poll) ? "Make My Top 25" : "Create My Ranking" : "View Poll";
 }
 
 function voteSummary(poll: BrowsePoll, filtersActive: boolean): string {
@@ -87,7 +88,8 @@ function PollCard({ poll, filtersActive, editorsReady, entering, onEnter }: {
   </article>;
 }
 
-export function ConsensusExplorer() {
+export function ConsensusExplorer({ initialView = "community" }: { initialView?: "community" | "ap" }) {
+  const [view, setView] = useState(initialView);
   const router = useRouter();
   const [polls, setPolls] = useState<BrowsePoll[]>([]);
   const [filterCategories, setFilterCategories] = useState<BrowseDemographicFilterCategory[]>([]);
@@ -161,12 +163,19 @@ export function ConsensusExplorer() {
   }
 
   return <main className="browse-page rankings-page shell">
+    <nav className="ranking-view-tabs" aria-label="Choose rankings">
+      <button aria-pressed={view === "community"} onClick={() => setView("community")}>Community Top 25</button>
+      <button aria-pressed={view === "ap"} onClick={() => setView("ap")}>AP Poll & Voters</button>
+      <Link href="/rank/top-25">My Top 25 →</Link>
+    </nav>
+    {view === "ap" ? <ApPollViewer /> : <>
+
     {state === "loading" ? <div className="browse-empty rankings-loading"><strong>Loading the current Top 25…</strong></div> : null}
-    {state === "unavailable" ? <div className="browse-empty rankings-loading"><strong>Rankings are unavailable.</strong><p>Try again shortly.</p></div> : null}
+    {state === "unavailable" ? <div className="browse-empty rankings-loading"><strong>Rankings are unavailable.</strong><p>Community voting is temporarily unavailable. You can still explore the AP poll.</p><button onClick={() => setView("ap")}>View AP Poll & Voters →</button></div> : null}
 
     {primaryTop25 ? <section className="top25-hero" aria-labelledby="top25-heading">
       <header>
-        <div><p className="kicker">CURRENT COMMUNITY RANKING</p><h1 id="top25-heading">Top 25 <span>— {displayRankingPeriod(primaryTop25.periodTitle)}</span></h1><p>Consensus from {primaryTop25.selectedResponseCount ?? primaryTop25.responseCount} {filtersActive ? "matching " : ""}ballots.</p></div>
+        <div><p className="kicker">RANKED COMMUNITY · THIS VOTING WEEK</p><h1 id="top25-heading">Top 25 <span>— {displayRankingPeriod(primaryTop25.periodTitle)}</span></h1><p>{filtersActive ? "Filtered consensus" : "Community consensus"} from {primaryTop25.selectedResponseCount ?? primaryTop25.responseCount} {filtersActive ? "matching " : ""}ballots. One vote per person.</p><small>Ranked voting weeks run Monday–Sunday, Eastern time.</small></div>
         <div className="top25-hero-actions">
           <button type="button" className={`history-toggle${showHistory ? " is-active" : ""}`} disabled={primaryTop25.history.length < 2} onClick={() => setShowHistory((current) => !current)}>{showHistory ? "Hide Movement" : "View 3-Week Movement"}</button>
           <RankingEntryButton poll={primaryTop25} disabled={!editorsReady || enteringPollId === primaryTop25.id} onEnter={(poll) => void enterRanking(poll)} />
@@ -180,7 +189,7 @@ export function ConsensusExplorer() {
 
     {rankingMessage ? <p className="ranking-save-message" role="status">{rankingMessage}</p> : null}
 
-    {(state === "ready" || state === "updating") ? <section className="browse-consensus-controls" aria-label="Consensus filters">
+    {(state === "ready" || state === "updating") ? <details className="browse-consensus-controls" aria-label="Consensus filters"><summary>Filter by demographics{filtersActive ? " · Filters active" : ""}</summary>
       <div><p className="kicker">FILTER THE CONSENSUS</p><h2>Compare any group</h2><p>Completing a profile category unlocks every value in that category.</p></div>
       <div className="browse-filter-dropdowns" aria-busy={state === "updating"}>
         {filterCategories.map((category) => <label key={category.id}><span>{category.label}</span><select value={activeFilters[category.id] ?? ""} onChange={(event) => setCategoryFilter(category.id, event.target.value)}><option value="">All voters</option>{category.options.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select></label>)}
@@ -192,11 +201,12 @@ export function ConsensusExplorer() {
         return option ? <button key={categoryId} type="button" onClick={() => setCategoryFilter(categoryId, "")}>{category?.label}: {option.label} ×</button> : null;
       })}<button type="button" onClick={() => { setState("updating"); setEditorsReady(false); setActiveFilters({}); }}>Clear all</button></div> : null}
       {state === "updating" ? <span className="browse-filter-status" role="status">Updating consensus…</span> : null}
-    </section> : null}
+    </details> : null}
 
     {(state === "ready" || state === "updating") ? <section className="other-rankings-heading"><div><p className="kicker">MORE RANKINGS</p><h2>Explore every poll</h2></div><Link className="button button-secondary" href="/create">+ Create poll</Link></section> : null}
     {(state === "ready" || state === "updating") ? <label className="browse-search"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search polls or creators" />{query ? <button type="button" onClick={() => setQuery("")} aria-label="Clear search">×</button> : null}</label> : null}
     {(state === "ready" || state === "updating") && community.length ? <section className="browse-section"><header><div><p className="kicker">COMMUNITY CONSENSUS</p><h2>{filtersActive ? "Selected voters" : "All voters"}</h2></div><span>{community.length}</span></header><div className="browse-grid">{community.map((poll) => <PollCard key={poll.id} poll={poll} filtersActive={filtersActive} editorsReady={editorsReady} entering={enteringPollId === poll.id} onEnter={(selectedPoll) => void enterRanking(selectedPoll)} />)}</div></section> : null}
     {(state === "ready" || state === "updating") && !community.length ? <div className="browse-empty"><strong>{query ? "No poll matches." : "No other public polls yet."}</strong><p>{query ? "Try another search." : "Create the next one."}</p></div> : null}
+    </>}
   </main>;
 }

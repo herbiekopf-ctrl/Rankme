@@ -23,26 +23,26 @@ function rankY(position: number): number {
 
 export function RankingHistoryChart({ periods }: { periods: BrowseConsensusPeriod[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const usablePeriods = useMemo(() => periods.filter((period) => !period.suppressed && period.positions.length), [periods]);
+  const usablePeriods = useMemo(() => periods.map(period => ({ ...period, positions: period.suppressed ? [] : period.positions })), [periods]);
   const series = useMemo(() => buildConsensusHistorySeries(usablePeriods), [usablePeriods]);
   const rowCount = Math.max(25, ...usablePeriods.flatMap((period) => period.positions.map((position) => position.position)), 1);
   const chartHeight = rowCount * ROW_HEIGHT;
   const selected = selectedId ? series.find((team) => team.entityId === selectedId) ?? null : null;
   const currentPeriodIndex = usablePeriods.length - 1;
 
-  if (usablePeriods.length < 2) {
+  if (usablePeriods.filter(period => period.positions.length).length < 2) {
     return <div className="ranking-history-empty"><strong>More weekly rankings are needed.</strong><span>Movement appears after at least two weeks have published ballots.</span></div>;
   }
 
   return <section className="ranking-history" aria-label="Top 25 movement over the last three weeks">
     <div className="ranking-history-intro">
-      <div><p className="kicker">LAST {usablePeriods.length} WEEKS</p><h3>How the Top 25 moved</h3><p>Tap any logo to trace that team. The current week is highlighted.</p></div>
-      {selected ? <button type="button" className="ranking-history-selection" onClick={() => setSelectedId(null)}><TeamMark entity={historyEntity(selected)} size="small" /><span><strong>{selected.name}</strong><small>{consensusMovementLabel(selected, currentPeriodIndex)} · Clear</small></span></button> : null}
+      <div><p className="kicker">LAST {usablePeriods.length} WEEKS</p><h3>How the Top 25 moved</h3><p>Tap any logo to trace that team. The latest shown week is highlighted. Empty weeks have no ballots.</p></div>
+      {selected ? <button type="button" className="ranking-history-selection" onClick={() => setSelectedId(null)}><TeamMark entity={historyEntity(selected)} size="small" /><span><strong>{selected.name}</strong><small>{usablePeriods[currentPeriodIndex]?.positions.length ? consensusMovementLabel(selected, currentPeriodIndex) : "No result for the latest week"} · Clear</small></span></button> : null}
     </div>
     <div className="ranking-history-scroll">
       <div className="ranking-history-canvas" style={{ "--history-height": `${chartHeight}px` } as CSSProperties}>
         <div className="ranking-history-headings">
-          {usablePeriods.map((period, index) => <div key={period.cycleId} className={index === currentPeriodIndex ? "is-current" : ""}><span>{index === currentPeriodIndex ? "CURRENT WEEK" : period.week ? `WEEK ${period.week}` : `PRIOR WEEK ${usablePeriods.length - index - 1}`}</span><strong>{displayRankingPeriod(period.title)}</strong><small>{period.selectedResponseCount ?? period.responseCount} ballots</small></div>)}
+          {usablePeriods.map((period, index) => <div key={period.cycleId} className={index === currentPeriodIndex ? "is-current" : ""}><span>{index === currentPeriodIndex ? "LATEST SHOWN" : `PRIOR VOTING WEEK`}</span><strong>{displayRankingPeriod(period.title)}</strong><small>{period.selectedResponseCount ?? period.responseCount} ballots</small></div>)}
         </div>
         <div className="ranking-history-plot" style={{ height: chartHeight }}>
           <svg viewBox={`0 0 100 ${chartHeight}`} preserveAspectRatio="none" aria-hidden="true">

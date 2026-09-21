@@ -6,7 +6,7 @@ import { encodeCustomPollConfig } from "@/lib/domain/customPolls";
 import { emptyRankingHistory, rankingHistoryReducer } from "@/lib/domain/rankingHistory";
 import { encodeRanking, insertEntity, moveEntity, removeEntity, validateRanking } from "@/lib/domain/ranking";
 import type { CustomPollConfig, DatasetEnvelope, RankableEntity, RankingDraft, RankingTemplate } from "@/lib/domain/types";
-import { defaultResponseCadence, localRankingPeriod, type RankingPeriodContext } from "@/lib/domain/rankingPeriods";
+import { collegeFootballSeason, periodIsOpen, defaultResponseCadence, localRankingPeriod, type RankingPeriodContext } from "@/lib/domain/rankingPeriods";
 import { calculateCustomMetricScores } from "@/lib/domain/metrics";
 import { useCustomMetrics } from "./useCustomMetrics";
 import { entityMatches } from "@/lib/utils";
@@ -66,7 +66,7 @@ export function useRankingWorkspace({
   const [authReady, setAuthReady] = useState(false);
   const [effectiveConfig, setEffectiveConfig] = useState(customConfig);
   const fallbackPeriod = useMemo(
-    () => localRankingPeriod(defaultResponseCadence(template.id, effectiveConfig?.responseCadence), effectiveConfig?.year ?? 2026),
+    () => localRankingPeriod(defaultResponseCadence(template.id, effectiveConfig?.responseCadence), effectiveConfig?.year ?? collegeFootballSeason()),
     [effectiveConfig?.responseCadence, effectiveConfig?.year, template.id],
   );
   const [periodContext, setPeriodContext] = useState<RankingPeriodContext>(fallbackPeriod);
@@ -76,7 +76,14 @@ export function useRankingWorkspace({
   const hydrated = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusTimer = useRef<number | null>(null);
-  const storageKey = `ranked:draft:${template.id}`;
+  const storageKey = `ranked:draft:${rankedUser?.id ?? "guest"}:${template.id}:${fallbackPeriod.periodSlug}`;
+  const [clock, setClock] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = () => setClock(Date.now());
+    const timer = window.setInterval(tick, 30_000);
+    window.addEventListener("focus", tick);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", tick); };
+  }, []);
   const customMetrics = useCustomMetrics(template.entityType, isPermanentRankedUser(rankedUser));
 
   useEffect(() => {
@@ -147,25 +154,44 @@ export function useRankingWorkspace({
   }, [authReady, dataset.entities, dataset.version, effectiveConfig, fallbackPeriod, rankedUser, storageKey, template]);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        const draft = JSON.parse(saved) as RankingDraft;
-        if (draft.templateId === template.id && Array.isArray(draft.entityIds)) {
-          dispatch({ type: "hydrate", entityIds: draft.entityIds, maxLength: template.maxLength });
-        }
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      try {
+        const guestKey = `ranked:draft:guest:${template.id}:${fallbackPeriod.periodSlug}`;
+        const saved = window.localStorage.getItem(storageKey)
+          ?? (rankedUser ? window.localStorage.getItem(guestKey) : null);
+        const draft = saved ? JSON.parse(saved) as RankingDraft : null;
+        const available = new Set(dataset.entities.map(entity => entity.id));
+        const ids = draft?.templateId === template.id && Array.isArray(draft.entityIds)
+          ? draft.entityIds.filter(id => available.has(id)) : [];
+        dispatch({ type: "hydrate", entityIds: ids, maxLength: template.maxLength });
+        setSaveState("saved");
+      } catch {
+        dispatch({ type: "hydrate", entityIds: [], maxLength: template.maxLength });
+        setSaveState("unsaved");
+      } finally {
+        hydrated.current = true;
       }
-    } finally {
-      hydrated.current = true;
-      setSaveState("saved");
-    }
-  }, [storageKey, template.id, template.maxLength]);
+    });
+    return () => { active = false; };
+  }, [storageKey, template.id, template.maxLength, dataset.entities, fallbackPeriod.periodSlug, rankedUser]);
+
+  const periodOpensAt = periodContext.opensAt;
+  const periodClosesAt = periodContext.closesAt;
+  const periodEditable = periodContext.editable;
+  const periodSeason = periodContext.season;
+  const hasRemoteDraft = Boolean(periodContext.rankingId);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (!hydrated.current || !periodReady || periodContext.status === "published") return;
+    const windowContext = { opensAt: periodOpensAt, closesAt: periodClosesAt, editable: periodEditable };
+    if (!hydrated.current || !periodReady || periodContext.status === "published" || !periodIsOpen(windowContext)) return;
+    let active = true;
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      if (!periodIsOpen(windowContext)) return;
       const draft: RankingDraft = {
         id: `local-${template.id}`,
         templateId: template.id,
@@ -175,28 +201,37 @@ export function useRankingWorkspace({
         entityIds: history.present,
         updatedAt: new Date().toISOString(),
       };
-      window.localStorage.setItem(storageKey, JSON.stringify(draft));
-      if (!isPermanentRankedUser(rankedUser) || history.present.length === 0) return setSaveState("saved");
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(draft));
+      } catch {
+        setSaveState("unsaved");
+        return;
+      }
+      if (!isPermanentRankedUser(rankedUser) || (history.present.length === 0 && !hasRemoteDraft) || periodLoadError) return setSaveState("saved");
       const syncCloud = async () => {
+        if (!active || !periodIsOpen(windowContext)) return;
+        let rankingId: string;
         if (effectiveConfig) {
           const remoteConfig = effectiveConfig.remoteTemplateVersionId ? effectiveConfig : await persistCustomPoll(effectiveConfig, dataset);
-          if (remoteConfig !== effectiveConfig) {
+          if (remoteConfig !== effectiveConfig && active) {
             setEffectiveConfig(remoteConfig);
             window.localStorage.setItem(`ranked:custom-poll:${remoteConfig.id}`, JSON.stringify(remoteConfig));
           }
-          const rankingId = await persistRankingDraft(remoteConfig, dataset, history.present);
-          setPeriodContext((current) => ({ ...current, rankingId, status: "draft", entityIds: history.present, updatedAt: new Date().toISOString() }));
+          if (!active || !periodIsOpen(windowContext)) return;
+          rankingId = await persistRankingDraft(remoteConfig, dataset, history.present);
         } else {
-          const rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
-          setPeriodContext((current) => ({ ...current, rankingId, status: "draft", entityIds: history.present, updatedAt: new Date().toISOString() }));
+          rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, periodSeason);
         }
+        if (active) setPeriodContext((current) => ({ ...current, rankingId, status: "draft", entityIds: history.present, updatedAt: new Date().toISOString() }));
       };
-      void syncCloud().then(() => setSaveState("cloud")).catch(() => setSaveState("saved"));
+      saveQueue.current = saveQueue.current.catch(() => undefined).then(syncCloud);
+      void saveQueue.current.then(() => { if (active) setSaveState("cloud"); }).catch(() => { if (active) setSaveState("saved"); });
     }, 350);
     return () => {
+      active = false;
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [dataset, effectiveConfig, history.past.length, history.present, periodContext.status, periodReady, rankedUser, storageKey, template]);
+  }, [dataset, effectiveConfig, history.past.length, history.present, periodContext.status, hasRemoteDraft, periodSeason, periodOpensAt, periodClosesAt, periodEditable, periodLoadError, periodReady, rankedUser, storageKey, template]);
 
   const hasPublishedChanges = editingPublished && !sameOrder(history.present, periodContext.entityIds);
 
@@ -238,8 +273,8 @@ export function useRankingWorkspace({
   const remaining = Math.max(0, template.defaultLength - history.present.length);
   const detailEntity = detailId ? entitiesById.get(detailId) : undefined;
 
-  const canRevisePublished = periodReady && periodContext.status === "published" && periodContext.editable;
-  const canEditPeriod = periodReady && periodContext.editable;
+  const canRevisePublished = periodReady && periodContext.status === "published" && periodIsOpen(periodContext, clock);
+  const canEditPeriod = periodReady && periodIsOpen(periodContext, clock);
   const commit = useCallback((entityIds: string[]) => {
     if (!canEditPeriod) return;
     if (periodContext.status === "published" && !editingPublished) setEditingPublished(true);
@@ -307,6 +342,11 @@ export function useRankingWorkspace({
     setPublishing(true);
     setPublishError("");
     try {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      await saveQueue.current.catch(() => undefined);
+      if (!periodIsOpen(periodContext)) throw new Error("This voting week has closed. Reload to begin the new week.");
+      const currentPeriod = await loadCurrentRankingPeriod(template, effectiveConfig);
+      if (!currentPeriod || currentPeriod.periodSlug !== periodContext.periodSlug || !periodIsOpen(currentPeriod)) throw new Error("The voting period has changed. Reload before submitting.");
       let rankingId: string;
       if (effectiveConfig) {
         const remoteConfig = await persistCustomPoll(effectiveConfig, dataset);
@@ -314,7 +354,7 @@ export function useRankingWorkspace({
         window.localStorage.setItem(`ranked:custom-poll:${remoteConfig.id}`, JSON.stringify(remoteConfig));
         rankingId = await persistRankingDraft(remoteConfig, dataset, history.present);
       } else {
-        rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, 2026);
+        rankingId = await persistBuiltInRankingDraft(template, dataset, history.present, periodContext.season);
       }
       if (periodContext.status === "published") {
         const savedAt = new Date().toISOString();
@@ -329,7 +369,7 @@ export function useRankingWorkspace({
       setPublishError(reason instanceof Error ? reason.message : "Your ranking could not be published.");
       setPublishing(false);
     }
-  }, [canEditPeriod, dataset, effectiveConfig, history.present, periodContext.status, router, sharePath, template]);
+  }, [canEditPeriod, dataset, effectiveConfig, history.present, periodContext, router, sharePath, template]);
 
   return {
     template,

@@ -1,7 +1,7 @@
 "use client";
 
 import { getBrowserSupabaseClient, getRankedUser, isPermanentRankedUser, requirePermanentRankedUser } from "./browser";
-import { localRankingPeriod, type RankingResponseStatus, type ResponseCadence } from "@/lib/domain/rankingPeriods";
+import { collegeFootballSeason, localRankingPeriod, recentWeeklyPeriods, type RankingResponseStatus, type ResponseCadence } from "@/lib/domain/rankingPeriods";
 
 export type BrowsePollPreview = {
   position: number;
@@ -206,7 +206,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   const templateIds = templates.map((template) => template.id);
   const { data: versions, error: versionError } = await client
     .from("ranking_template_versions")
-    .select("id,template_id,entity_type_id,default_length,max_length,version,response_cadence")
+    .select("id,template_id,entity_type_id,default_length,max_length,version,response_cadence,eligibility_query")
     .in("template_id", templateIds)
     .order("version", { ascending: false });
   if (versionError) throw versionError;
@@ -243,19 +243,19 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
   const now = Date.now();
   for (const version of latestVersions) {
     const cadence = version.response_cadence as ResponseCadence;
-    const fallback = localRankingPeriod(cadence, 2026);
+    const isOfficial = templates.find(template => template.id === version.template_id)?.template_kind === "official";
+    const configuredYear = (version.eligibility_query as { year?: unknown } | null)?.year;
+    const season = !isOfficial && typeof configuredYear === "number" ? configuredYear : collegeFootballSeason();
+    const fallback = localRankingPeriod(cadence, season);
     const cycles = cyclesData.filter((cycle) => cycle.template_id === version.template_id);
     const current = cycles.find((cycle) => {
-      if (cycle.slug === fallback.periodSlug) return true;
-      if (cadence === "once") return cycle.slug === "single-response";
-      if (cadence === "seasonal") return cycle.slug === "2026-season";
-      return Boolean(cycle.opens_at && cycle.closes_at && new Date(cycle.opens_at).getTime() <= now && now < new Date(cycle.closes_at).getTime());
+      return cycle.slug === fallback.periodSlug && (cadence === "once" || cycle.season === season);
     });
-    const editable = Boolean(current
+    const editable = !current || Boolean(current
       && current.status === "open"
       && (!current.opens_at || new Date(current.opens_at).getTime() <= now)
       && (!current.closes_at || now < new Date(current.closes_at).getTime()));
-    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null, season: current?.season ?? 2026, week: current?.week ?? null, opensAt: current?.opens_at ?? null, editable });
+    periodByVersion.set(version.id, { title: current?.title ?? fallback.periodTitle, cycleId: current?.id ?? null, season: current?.season ?? season, week: current?.week ?? null, opensAt: current?.opens_at ?? null, editable });
   }
 
   const seasons = [...new Set([...periodByVersion.values()].map((period) => period.season))];
@@ -295,16 +295,13 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
     });
   const top25Template = templates.find((template) => template.slug === "official-top-25");
   const top25Version = top25Template ? latestVersionByTemplate.get(top25Template.id) : undefined;
-  const top25CycleId = top25Version ? periodByVersion.get(top25Version.id)?.cycleId : null;
   const top25Cycles = top25Template
-    ? cyclesData
-        .filter((cycle) => cycle.template_id === top25Template.id && (cycle.id === top25CycleId || !cycle.opens_at || new Date(cycle.opens_at).getTime() <= now))
-        .sort((left, right) => String(right.opens_at ?? "").localeCompare(String(left.opens_at ?? "")))
-        .slice(0, 3)
-        .reverse()
+    ? recentWeeklyPeriods(collegeFootballSeason(), new Date(now)).map(period =>
+        cyclesData.find(cycle => cycle.template_id === top25Template.id && cycle.slug === period.periodSlug)
+        ?? { id: null, title: period.periodTitle, week: null, opens_at: period.opensAt })
     : [];
   const historyTargets = top25Version
-    ? top25Cycles.map((cycle) => ({ templateVersionId: top25Version.id, cycleId: cycle.id }))
+    ? top25Cycles.flatMap((cycle) => cycle.id ? [{ templateVersionId: top25Version.id, cycleId: cycle.id }] : [])
     : [];
   const [consensusByTarget, historyByTarget] = await Promise.all([
     loadConsensus(currentTargets, filterIds),
@@ -320,7 +317,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       ? top25Cycles.map((cycle): BrowseConsensusPeriod => {
           const result = historyByTarget.get(`${version.id}:${cycle.id}`);
           return {
-            cycleId: cycle.id,
+            cycleId: cycle.id ?? `empty-${cycle.opens_at}`,
             title: cycle.title,
             week: cycle.week,
             opensAt: cycle.opens_at,
@@ -343,7 +340,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       entityType: entityTypeById.get(version.entity_type_id) ?? "item",
       length: version.default_length,
       maxLength: version.max_length,
-      datasetVersionId: datasetVersionBySeason.get(period?.season ?? 2026) ?? null,
+      datasetVersionId: datasetVersionBySeason.get(period?.season ?? collegeFootballSeason()) ?? null,
       editable: period?.editable ?? false,
       createdAt: template.created_at,
       lastResponseAt: consensus?.lastResponseAt ?? null,
@@ -352,7 +349,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       consensusSuppressed: consensus?.suppressed ?? false,
       minimumCohort: consensus?.minimumCohort ?? (filterIds.length ? 5 : 1),
       responseCadence: version.response_cadence as ResponseCadence,
-      periodTitle: period?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, 2026).periodTitle,
+      periodTitle: period?.title ?? localRankingPeriod(version.response_cadence as ResponseCadence, collegeFootballSeason()).periodTitle,
       myResponseStatus: myStatusByVersion.get(version.id) ?? null,
       preview: consensus?.positions ?? [],
       history,

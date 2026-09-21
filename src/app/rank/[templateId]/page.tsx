@@ -1,3 +1,4 @@
+import { collegeFootballSeason } from "@/lib/domain/rankingPeriods";
 import { notFound } from "next/navigation";
 import { RankingBuilder } from "@/components/RankingBuilder";
 import { loadRankableDataset, loadTeamDataset } from "@/lib/data/rankableDatasets";
@@ -8,9 +9,9 @@ export default async function RankingPage({ params }: { params: Promise<{ templa
   const template = getTemplate(templateId);
   if (!template) notFound();
   const dataset = template.entityType === "stadium"
-    ? await loadRankableDataset(2026, "stadiums")
+    ? await loadRankableDataset(collegeFootballSeason(), "stadiums")
     : template.entityType === "team"
-      ? await loadTeamDataset(2026)
-      : await loadRankableDataset(2026, "teams");
+      ? await loadTeamDataset(collegeFootballSeason())
+      : await loadRankableDataset(collegeFootballSeason(), "teams");
   return <RankingBuilder template={template} initialDataset={dataset} />;
 }

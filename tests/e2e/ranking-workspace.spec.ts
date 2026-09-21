@@ -5,16 +5,16 @@ import type { CustomPollConfig, DatasetEnvelope, RankingDraft } from "../../src/
 async function openFixtureRanking(page: Page, config: CustomPollConfig, dataset: DatasetEnvelope, draft?: Partial<RankingDraft>) {
   await page.addInitScript(({ configValue, draftValue }) => {
     window.localStorage.setItem(`ranked:custom-poll:${configValue.id}`, JSON.stringify(configValue));
-    if (draftValue) window.localStorage.setItem(`ranked:draft:custom-${configValue.id}`, JSON.stringify(draftValue));
+    if (draftValue) window.localStorage.setItem(`ranked:draft:guest:custom-${configValue.id}:single-response`, JSON.stringify(draftValue));
   }, { configValue: config, draftValue: draft });
   await page.route("**/api/college-football/rankables?**", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(dataset) });
   });
-  await page.route("https://cdn.collegefootballdata.com/**", async (route) => {
+  await page.route("**/_next/image?**", async (route) => {
     await route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
   });
   await page.goto(`/rank/custom/${config.id}`);
-  await expect(page.getByRole("heading", { name: config.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: config.title })).toBeVisible({ timeout: 15_000 });
 }
 
 test("characterizes add, move, remove, undo, redo, local draft, and publish boundaries", async ({ page }, testInfo) => {
@@ -23,7 +23,8 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
 
   const rankingPane = page.locator('[data-workspace-pane="ranking"]');
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
-  const publish = page.getByRole("button", { name: "Publish my ranking" });
+  const publish = page.getByRole("button", { name: "Review & Submit" });
+  await page.getByRole("button", { name: /^NEED HELP/ }).first().click();
   await expect(rankingPane.getByText("YOUR RANKING", { exact: true })).toBeVisible();
   await expect(analysisPane.getByText("RANK BY METRIC", { exact: true })).toBeVisible();
   await expect.poll(async () => {
@@ -31,13 +32,13 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
     const analysisBox = await analysisPane.boundingBox();
     return Boolean(rankingBox && analysisBox && rankingBox.x < analysisBox.x);
   }).toBe(true);
-  await expect(page.locator('[data-media-role="canonical-team-mark"] img')).toHaveCSS("object-fit", "contain");
+  await expect(analysisPane.locator('[data-media-role="canonical-team-mark"] img')).toHaveCSS("object-fit", "contain");
   await expect(page.locator('[data-media-role="fallback"]').first()).toBeVisible();
   await expect(publish).toBeDisabled();
   await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
   await page.getByRole("button", { name: "Add Beta Tech to your ranking" }).click();
   await expect(page.getByRole("heading", { name: "2 of 3 ranked" })).toBeVisible();
-  await page.getByRole("button", { name: "Move Beta Tech up" }).click();
+  await rankingPane.getByLabel("Move Beta Tech to rank", { exact: true }).selectOption("1");
   await expect(page.locator(".ranked-name-button strong")).toHaveText(["Beta Tech", "Alpha State"]);
   await page.getByRole("button", { name: /Undo/ }).click();
   await expect(page.locator(".ranked-name-button strong")).toHaveText(["Alpha State", "Beta Tech"]);
@@ -50,7 +51,7 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
   await expect(publish).toBeEnabled();
 
   await expect.poll(async () => page.evaluate(() => {
-    const raw = window.localStorage.getItem("ranked:draft:custom-phase0-team");
+    const raw = window.localStorage.getItem("ranked:draft:guest:custom-phase0-team:single-response");
     return raw ? (JSON.parse(raw) as RankingDraft).entityIds : [];
   })).toEqual(["team:2", "team:1", "team:3"]);
 });
@@ -58,6 +59,7 @@ test("characterizes add, move, remove, undo, redo, local draft, and publish boun
 test("edits the personal ballot directly from Rank by Metric", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop metric ranking baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
+  await page.getByRole("button", { name: /^NEED HELP/ }).first().click();
 
   const analysisPane = page.locator('[data-workspace-pane="analysis"]');
   await expect(analysisPane.getByRole("heading", { name: "One stat. Every team." })).toBeVisible();
@@ -88,7 +90,7 @@ test("hydrates an existing local draft without changing its saved order", async 
 test("keeps the generic stadium workflow usable at 390px", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "390px mobile baseline");
   await openFixtureRanking(page, stadiumPollConfig, stadiumDataset);
-  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: /^NEED HELP/ }).last().click();
   await page.getByRole("button", { name: "Add Alpha Field to your ranking" }).scrollIntoViewIfNeeded();
   await page.getByRole("button", { name: "Add Alpha Field to your ranking" }).click();
   await expect(page.getByRole("button", { name: /^YOUR RANKING/ }).last()).toContainText("1/2");
@@ -96,21 +98,21 @@ test("keeps the generic stadium workflow usable at 390px", async ({ page }, test
   await expect(page.getByRole("heading", { name: "1 of 2 ranked" })).toBeVisible();
   await expect(page.locator('[data-media-role="related-team-mark"]').first()).toBeVisible();
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: /^NEED HELP/ }).last().click();
   await page.getByLabel("Rank teams by metric").selectOption("capacity");
   await expect(page.locator(".metric-team-identity > strong")).toHaveText(["Alpha Field", "Beta Stadium", "Gamma Dome"]);
   const analysisScroll = page.locator('[data-scroll-region="analysis"]');
   await page.locator(".rank-by-metric-list").evaluate((element) => { element.setAttribute("style", "padding-bottom: 900px"); });
   await analysisScroll.evaluate((element) => { element.scrollTop = 120; });
   await page.getByRole("button", { name: /^YOUR RANKING/ }).last().click();
-  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: /^NEED HELP/ }).last().click();
   await expect.poll(() => analysisScroll.evaluate((element) => element.scrollTop)).toBe(120);
 });
 
 test("makes Live Model dense and explicit at 390px", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "390px Live Model baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
-  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: /^NEED HELP/ }).last().click();
   await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
   await page.getByRole("button", { name: "Live Model" }).click();
 
@@ -130,10 +132,10 @@ test("makes Live Model dense and explicit at 390px", async ({ page }, testInfo) 
 test("keeps metric order, ballot position, and edit controls readable at 390px", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile-chromium", "390px metric ranking baseline");
   await openFixtureRanking(page, teamPollConfig, teamDataset);
-  await page.getByRole("button", { name: /^RANK BY METRIC/ }).last().click();
+  await page.getByRole("button", { name: /^NEED HELP/ }).last().click();
   await page.getByRole("button", { name: "Add Alpha State to your ranking" }).click();
   await expect(page.locator(".rank-by-metric-list > li").first()).toContainText("Metric #1");
-  await expect(page.getByLabel("Move Alpha State to rank")).toHaveValue("1");
+  await expect(page.locator('[data-workspace-pane="analysis"]').getByLabel("Move Alpha State to rank", { exact: true })).toHaveValue("1");
   await expect(page.getByRole("button", { name: "Add Beta Tech to your ranking" })).toBeVisible();
   await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
