@@ -2,13 +2,14 @@ name: Refresh Ranked data
 
 on:
   schedule:
-    - cron: "17 12 * * 0"
+    # Sunday evening Eastern, after the weekend's games and AP release.
+    - cron: "17 2 * * 1"
   workflow_dispatch:
     inputs:
       years:
         description: JSON array of seasons to refresh
         required: false
-        default: "[2026]"
+        default: ""
 
 permissions:
   contents: read
@@ -36,5 +37,5 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-          REQUESTED_YEARS: ${{ inputs.years || '[2026]' }}
+          REQUESTED_YEARS: ${{ inputs.years }}
         run: npm run import:cfbd -- "$REQUESTED_YEARS"

@@ -12,6 +12,6 @@ export async function GET(request: Request) {
 
   const dataset = await loadTeamDataset(year);
   return NextResponse.json(dataset, {
-    headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
+    headers: { "Cache-Control": dataset.entities.length ? "public, s-maxage=3600, stale-while-revalidate=86400" : "no-store" },
   });
 }

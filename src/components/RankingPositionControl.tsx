@@ -25,7 +25,7 @@ export function RankingPositionControl({
   const positionCount = isRanked
     ? rankingLength
     : Math.min(maxLength, rankingLength + 1);
-  const canAdd = !disabled && !saving && rankingLength < maxLength;
+  const canAdd = !disabled && !saving && maxLength > 0;
   const canMove = !disabled && !saving && isRanked;
 
   if (!isRanked) {
@@ -34,9 +34,9 @@ export function RankingPositionControl({
         <button
           type="button"
           disabled={!canAdd}
-          onClick={() => onAdd(rankingLength)}
+          onClick={() => onAdd(Math.min(rankingLength, maxLength - 1))}
           aria-label={`Add ${entityName} to your ranking`}
-        >+ Rank</button>
+        >{rankingLength >= maxLength ? `Replace #${maxLength}` : "+ Rank"}</button>
         {canAdd && positionCount > 1 ? (
           <select
             value=""

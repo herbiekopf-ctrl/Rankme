@@ -1,9 +1,11 @@
 import { pullCollegeFootballSnapshot } from "../src/lib/adapters/cfbd";
 import { ensureCollegeFootballCatalog } from "../src/lib/data/ensureCollegeFootballCatalog";
 import { persistCollegeFootballSnapshot } from "../src/lib/data/supabaseSnapshot";
+import { collegeFootballSeason } from "../src/lib/domain/rankingPeriods";
+import { loadSupabaseRankableDataset } from "../src/lib/data/supabaseRankables";
 
 function requestedYears(): number[] {
-  const raw = process.argv[2] ?? "[2026]";
+  const raw = process.argv[2]?.trim() || JSON.stringify([collegeFootballSeason()]);
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -50,6 +52,10 @@ async function main(): Promise<void> {
     const result = await persistCollegeFootballSnapshot(snapshot);
     if (!result.persisted && result.reason !== "already-published") {
       throw new Error(`[${year}] Supabase did not publish the season (${result.reason ?? "unknown reason"}).`);
+    }
+    const visible = await loadSupabaseRankableDataset(year, "teams");
+    if (visible?.version !== snapshot.version || visible.entities.length !== snapshot.teams.length) {
+      throw new Error(`[${year}] Import wrote data, but the ballot cannot read the matching version and team count.`);
     }
     console.log(JSON.stringify({
       year,

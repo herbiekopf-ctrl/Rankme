@@ -60,6 +60,7 @@ function metricMap(snapshot: CollegeFootballSnapshot): Map<string, MetricDefinit
 }
 
 export async function persistCollegeFootballSnapshot(snapshot: CollegeFootballSnapshot): Promise<SnapshotPersistenceResult> {
+  if (new Set(snapshot.teams.map(team => team.id)).size < 25) throw new Error("Too few distinct teams for a Top 25 ballot. Previous dataset retained.");
   const client = createAdminSupabaseClient();
   if (!client) return { persisted: false, reason: "missing-server-secret" };
 
