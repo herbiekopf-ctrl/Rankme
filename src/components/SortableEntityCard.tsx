@@ -31,7 +31,7 @@ export function SortableEntityCard({
   focused?: boolean;
   disabled?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entity.id, disabled });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: entity.id, disabled });
   const primary = template.visibleAttributes.slice(0, 2);
   return (
     <article
@@ -40,7 +40,7 @@ export function SortableEntityCard({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`ranked-card${isDragging ? " is-dragging" : ""}${disabled ? " is-locked" : ""}${focused ? " is-focused" : ""}`}
     >
-      <button className="drag-handle" {...attributes} {...listeners} disabled={disabled} aria-label={`Drag ${entity.name} from rank ${rank}`}>⠿</button>
+      <button ref={setActivatorNodeRef} style={{ touchAction: "none" }} className="drag-handle" {...attributes} {...listeners} disabled={disabled} aria-label={`Drag ${entity.name} from rank ${rank}`}>⠿</button>
       <span className="rank-number">{onPosition ? <select value={rank} disabled={disabled} onChange={e => onPosition(Number(e.target.value) - 1)} aria-label={`Move ${entity.name} to rank`}>{Array.from({ length: rankingLength ?? rank }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select> : rank}</span>
       <TeamMark entity={entity} />
       <div className="ranked-identity">

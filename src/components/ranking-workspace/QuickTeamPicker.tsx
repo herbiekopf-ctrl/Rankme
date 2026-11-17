@@ -30,11 +30,12 @@ export function QuickTeamPicker({ controller }: { controller: RankingWorkspaceCo
     .filter(e => query || !controller.history.present.includes(e.id)).slice(0, query ? 15 : 3), [controller.dataset.entities, controller.history.present, query]);
   return <div className="quick-team-picker">
     {!controller.history.present.length && starter.length ? <div className="ballot-quick-start"><button disabled={controller.isPeriodLocked} onClick={() => { controller.commit(starter); setMessage("AP order copied into your draft. Make it yours, then submit."); }}>Start with the AP Top 25</button><small>{apPoll?.week} · {apPoll?.releasedAt.slice(0, 10)} · Nothing submitted yet</small></div> : null}
-    <label htmlFor="quick-team-search">{controller.remaining ? `Add your #${controller.history.present.length + 1} pick` : "Ballot full · Remove a pick to add another"}</label>
+    <label htmlFor="quick-team-search">{controller.remaining ? `Add your #${controller.history.present.length + 1} pick` : `Find a team to replace #${controller.template.maxLength}`}</label>
     <input id="quick-team-search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder={`Find a ${optionLabel}…`} />
     {(!controller.history.present.length || query) ? <ul>{results.map(team => {
       const rank = controller.history.present.indexOf(team.id) + 1;
-      return <li key={team.id}><TeamMark entity={team} size="small" /><button className="quick-team-name" onClick={() => controller.setDetailId(team.id)}>{team.name}</button><button disabled={controller.isPeriodLocked || Boolean(rank) || !controller.remaining} onClick={() => { controller.addEntity(team.id); setMessage(`${team.name} added at #${controller.history.present.length + 1}`); setQuery(""); }}>{rank ? `#${rank} ✓` : "+ Add"}</button></li>;
+      const nextRank = Math.min(controller.history.present.length + 1, controller.template.maxLength);
+      return <li key={team.id}><TeamMark entity={team} size="small" /><button className="quick-team-name" onClick={() => controller.setDetailId(team.id)}>{team.name}</button><button disabled={controller.isPeriodLocked || Boolean(rank)} onClick={() => { controller.addEntity(team.id, nextRank - 1); setMessage(`${team.name} added at #${nextRank}. Undo to revert.`); setQuery(""); }}>{rank ? `#${rank} ✓` : controller.history.present.length >= controller.template.maxLength ? `Replace #${nextRank}` : "+ Add"}</button></li>;
     })}</ul> : null}
     {query && !results.length ? <p>No teams match. Try another name.</p> : null}
     <span className="quick-picker-status" role="status">{message}</span>
