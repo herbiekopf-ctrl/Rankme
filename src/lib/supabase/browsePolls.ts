@@ -41,6 +41,7 @@ export type BrowseConsensusPeriod = {
 };
 
 export type BrowsePoll = {
+  season?: number;
   id: string;
   slug: string;
   title: string;
@@ -337,6 +338,7 @@ export async function loadBrowsePolls(filterIds: string[] = []): Promise<BrowseP
       templateKind: template.template_kind,
       templateVersionId: version.id,
       cycleId: period?.cycleId ?? null,
+      season: period?.season,
       entityType: entityTypeById.get(version.entity_type_id) ?? "item",
       length: version.default_length,
       maxLength: version.max_length,

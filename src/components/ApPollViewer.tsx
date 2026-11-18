@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { TeamDetailsButton } from "./TeamDetails";
 import { TeamMark } from "./TeamMark";
 import type { ApPoll } from "@/lib/adapters/apPoll";
 export function ApPollViewer() {
@@ -23,7 +24,7 @@ export function ApPollViewer() {
     <label className="ap-voter-select"><span>View the poll or an individual vote</span><select value={voter} onChange={e => setVoter(e.target.value)}><option value="">AP consensus{poll.ballots.length ? ` · ${poll.ballots.length} voters` : ""}</option>{poll.ballots.map(b => <option key={b.id} value={b.id}>{b.name} — {b.affiliation}</option>)}</select></label>
     {ballot ? <p className="ap-context">{ballot.affiliation} · Individual AP ballot</p> : <p className="ap-context">25 points for a #1 vote, down to 1 point for #25.</p>}
     {!poll.ballotsVerified ? <p role="status">Individual ballots are not yet verified for this release. The published AP totals are shown.</p> : null}
-    <ol className="ap-ranking-list">{rows.map(team => <li key={team.id}><b>{team.rank}</b><TeamMark size="small" entity={{ id: team.id, name: team.name, entityType: "team", imageUrl: team.imageUrl, attributes: {} }} /><strong>{team.name}</strong>{!ballot ? <small>{team.points} pts</small> : null}</li>)}</ol>
+    <ol className="ap-ranking-list">{rows.map(team => <li key={team.id}><b>{team.rank}</b><TeamMark size="small" entity={{ id: team.id, name: team.name, entityType: "team", imageUrl: team.imageUrl, attributes: {} }} /><strong><TeamDetailsButton season={poll.season} team={{ ...team, entityType: "team", attributes: {} }} /></strong>{!ballot ? <small>{team.points} pts</small> : null}</li>)}</ol>
     <footer className="ap-source"><a href={poll.sourceUrl}>AP poll and ballot data via College Poll Tracker ↗</a></footer>
   </section>;
 }

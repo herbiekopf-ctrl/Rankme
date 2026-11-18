@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { collegeFootballSeason, defaultResponseCadence, localRankingPeriod, periodIsOpen, recentWeeklyPeriods, responseStateLabel } from "./rankingPeriods";
+import { ballotPeriodReceipt, collegeFootballSeason, defaultResponseCadence, localRankingPeriod, periodIsOpen, recentWeeklyPeriods, responseStateLabel } from "./rankingPeriods";
 
 describe("ranking periods", () => {
+  it("keeps the actual voting week in receipts, including across calendar years", () => {
+    expect(ballotPeriodReceipt("2026-response-week-2027-01-04")).toEqual({ season: 2026, label: "Week of Jan 4–10 · 2026 season" });
+    expect(ballotPeriodReceipt("preseason-2026").label).toBe("2026 season");
+  });
+
   it("uses a stable Monday-to-Sunday Eastern weekly identity", () => {
     const context = localRankingPeriod("weekly", 2026, new Date("2026-08-16T16:00:00Z"));
     expect(context.periodSlug).toBe("2026-response-week-2026-08-10");
