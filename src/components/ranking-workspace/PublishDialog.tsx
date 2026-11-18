@@ -1,6 +1,7 @@
 "use client";
 
 import { votingDeadline } from "@/lib/domain/rankingPeriods";
+import { TeamDetailsButton } from "../TeamDetails";
 import { SignInGate } from "../SignInGate";
 import type { RankingWorkspaceController } from "@/hooks/useRankingWorkspace";
 
@@ -17,7 +18,7 @@ export function PublishDialog({ controller }: { controller: RankingWorkspaceCont
         <p className="publish-period"><strong>{controller.periodContext.periodTitle} · {controller.periodContext.season}</strong><br />{votingDeadline(controller.periodContext)}</p>
         <p>{controller.editingPublished ? "This becomes your one active vote for the period. Your previous order stays in private revision history." : "Submit to count your vote in the community ranking. You can edit it until voting closes."}</p>
         <div className="publish-preview">
-          {controller.rankedEntities.slice(0, 5).map((entity, index) => <span key={entity.id}><b>{index + 1}</b>{entity.name}</span>)}
+          {controller.rankedEntities.slice(0, 5).map((entity, index) => <span key={entity.id}><b>{index + 1}</b>{entity.entityType === "team" ? <TeamDetailsButton team={entity} season={controller.periodContext.season} /> : entity.name}</span>)}
           <em>+ {Math.max(0, controller.rankedEntities.length - 5)} more</em>
         </div>
         {controller.authReady && controller.canPublishRelational ? (

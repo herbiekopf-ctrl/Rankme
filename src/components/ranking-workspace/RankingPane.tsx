@@ -51,7 +51,7 @@ export function RankingPane({ controller }: { controller: RankingWorkspaceContro
 
       <div className="rw-pane-body" data-scroll-region="ranking">
         <QuickTeamPicker controller={controller} />
-        <p className="ranking-instructions">Drag the grip to reorder, or tap a rank number to move a team.</p>
+        <p className="ranking-instructions">Tap a team for results. Tap its rank or drag the grip to move it.</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={history.present} strategy={verticalListSortingStrategy}>
             <div className="ranking-list">

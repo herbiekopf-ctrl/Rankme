@@ -3,7 +3,7 @@ import { PublishedBallot } from "@/components/PublishedBallot";
 import { decodeRanking } from "@/lib/domain/ranking";
 
 export const metadata: Metadata = {
-  title: "2026 Preseason Ballot",
+  title: "College Football Ballot",
   description: "A fan-built college football ranking on Ranked.",
 };
 

@@ -156,3 +156,18 @@ export function recentWeeklyPeriods(season: number, at = new Date()): RankingPer
     return localRankingPeriod("weekly", season, reference);
   });
 }
+
+/** Old shared links encoded only the season, so their week cannot be recovered. */
+export function ballotPeriodReceipt(slug: string, configuredSeason?: number) {
+  const weekly = /^(\d{4})-response-week-(\d{4}-\d{2}-\d{2})$/.exec(slug);
+  if (weekly) {
+    const date = new Date(`${weekly[2]}T12:00:00Z`);
+    if (Number.isFinite(date.getTime())) {
+      const period = localRankingPeriod("weekly", Number(weekly[1]), date);
+      if (period.periodSlug === slug) return { season: period.season, label: `${period.periodTitle} · ${period.season} season` };
+    }
+  }
+  const year = /^(?:preseason-(\d{4})|(\d{4})-season)$/.exec(slug);
+  const season = configuredSeason ?? (year ? Number(year[1] ?? year[2]) : collegeFootballSeason());
+  return { season, label: `${season} season` };
+}

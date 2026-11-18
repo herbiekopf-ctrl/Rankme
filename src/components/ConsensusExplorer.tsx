@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ApPollViewer } from "./ApPollViewer";
 import { RankingHistoryChart } from "./RankingHistoryChart";
+import { TeamDetailsButton } from "./TeamDetails";
 import { TeamMark } from "./TeamMark";
 import {
   browsePollHref,
@@ -51,7 +52,7 @@ function ConsensusRows({ poll, rows, prominent = false }: { poll: BrowsePoll; ro
     {rows.map((preview) => <li key={preview.entityId}>
       <b>#{preview.position}</b>
       <TeamMark entity={previewEntity(preview, poll.entityType)} size={prominent ? "medium" : "small"} />
-      <strong>{preview.name}</strong>
+      <strong>{poll.entityType === "team" ? <TeamDetailsButton team={previewEntity(preview, "team")} season={poll.season} /> : preview.name}</strong>
       <span className="ballot-count">{preview.ballotCount}/{poll.selectedResponseCount ?? poll.responseCount} ballots</span>
     </li>)}
   </ol>;

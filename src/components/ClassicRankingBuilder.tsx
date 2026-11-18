@@ -13,6 +13,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { collegeFootballSeason, defaultResponseCadence, localRankingPeriod } from "@/lib/domain/rankingPeriods";
 import { ComparisonTool } from "./ComparisonTool";
 import { SignInGate } from "./SignInGate";
 import { SortableEntityCard } from "./SortableEntityCard";
@@ -176,7 +177,8 @@ export function ClassicRankingBuilder({
   }
 
   const customQuery = effectiveConfig ? `&config=${encodeCustomPollConfig(effectiveConfig)}` : "";
-  const sharePath = `/ballot/${customConfig ? "custom-poll" : "preseason-2026"}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
+  const period = localRankingPeriod(defaultResponseCadence(template.id, customConfig?.responseCadence), customConfig?.year ?? collegeFootballSeason());
+  const sharePath = `/ballot/${period.periodSlug}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
   async function copyShareLink() {
     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
     setCopied(true);

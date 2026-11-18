@@ -329,7 +329,7 @@ export function useRankingWorkspace({
   }, []);
 
   const customQuery = effectiveConfig ? `&config=${encodeCustomPollConfig(effectiveConfig)}` : "";
-  const sharePath = `/ballot/${customConfig ? "custom-poll" : "preseason-2026"}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
+  const sharePath = `/ballot/${encodeURIComponent(periodContext.periodSlug)}?template=${customConfig ? "custom" : template.id}&items=${encodeRanking(history.present)}${customQuery}`;
 
   const copyShareLink = useCallback(async () => {
     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);

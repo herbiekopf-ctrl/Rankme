@@ -6,7 +6,7 @@ export const rankingTemplates: Record<string, RankingTemplate> = {
     version: 1,
     domain: "college-football",
     entityType: "team",
-    title: "Your 2026 Preseason Top 25",
+    title: "Your Top 25",
     eyebrow: "The Sunday ballot",
     description: "Rank the teams you believe are best right now. The data informs your call—it never makes it for you.",
     minLength: 25,

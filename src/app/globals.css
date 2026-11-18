@@ -1907,3 +1907,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .rw-page .quick-team-picker { padding: 9px; }
   .rw-page .quick-picker-status:empty { display: none; }
 }
+
+/* Team details use the same affordance in reading and editing views. */
+.team-details-trigger { display: inline; border: 0; padding: 4px 0; background: none; font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer; }
+.team-details-trigger::after, .ranked-name-button:not(:disabled)::after, .quick-team-name::after, .metric-team-identity strong::after, .metric-model-team strong::after { content: " ›"; opacity: .7; }
+.team-details-trigger:hover, .ranked-name-button:hover, .quick-team-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.team-gamecard { position: fixed; inset: 0; width: min(520px,calc(100% - 20px)); max-height: 86dvh; padding: 0; margin: auto; border: 0; border-radius: 16px; background: #fafaf6; color: #14291f; box-shadow: 0 12px 60px #08180d44; overscroll-behavior: contain; }
+.team-gamecard::backdrop { background: #07130fc4; }
+.gamecard-body { padding: clamp(14px,4vw,24px); }
+.gamecard-body header { display: grid; align-items: center; grid-template-columns: auto 1fr auto; gap: 12px; }
+.gamecard-body header button { align-self: start; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #e6ebe5; font-size: 22px; cursor: pointer; }
+.gamecard-body h2, .gamecard-body header p { margin: 2px 0; }
+.gamecard-body small, .gamecard-schedule time { color: #536459; font-size: 12px; }
+.gamecard-highlights { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 20px; }
+.gamecard-highlights section { display: grid; align-content: start; gap: 4px; padding: 12px; border: 1px solid #cedad0; border-radius: 8px; }
+.gamecard-highlights span, .gamecard-schedule b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.gamecard-body h3 { margin: 20px 0 5px; }
+.gamecard-schedule { list-style: none; padding: 0; margin: 0; }
+.gamecard-schedule li { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #dbe1da; }
+.gamecard-schedule strong, .gamecard-schedule small { display: block; }
+.gamecard-schedule b[data-result="W"] { color: #156641; }
+.gamecard-schedule b[data-result="L"] { color: #984037; }
+.gamecard-stats { padding: 15px 0; }
+.gamecard-stats summary { cursor: pointer; font-weight: 700; }
+.gamecard-stats dl > div { display: flex; justify-content: space-between; padding: 5px 0; }
+.browse-consensus-list li:has(.team-details-trigger), .ap-ranking-list li, .public-row:has(.team-details-trigger), .ranking-history-list ol li:has(.team-details-trigger) { position: relative; }
+.browse-consensus-list .team-details-trigger::before, .ap-ranking-list .team-details-trigger::before, .public-row .team-details-trigger::before, .ranking-history-list ol .team-details-trigger::before { content: ""; position: absolute; inset: 0; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type CSSProperties } from "react";
+import { TeamDetailsButton } from "./TeamDetails";
 import { TeamMark } from "./TeamMark";
 import { buildConsensusHistorySeries, consensusMovementLabel } from "@/lib/domain/consensusHistory";
 import { displayRankingPeriod, type BrowseConsensusPeriod } from "@/lib/supabase/browsePolls";
@@ -39,6 +40,7 @@ export function RankingHistoryChart({ periods }: { periods: BrowseConsensusPerio
       <div><p className="kicker">LAST {usablePeriods.length} WEEKS</p><h3>How the Top 25 moved</h3><p>Tap any logo to trace that team. The latest shown week is highlighted. Empty weeks have no ballots.</p></div>
       {selected ? <button type="button" className="ranking-history-selection" onClick={() => setSelectedId(null)}><TeamMark entity={historyEntity(selected)} size="small" /><span><strong>{selected.name}</strong><small>{usablePeriods[currentPeriodIndex]?.positions.length ? consensusMovementLabel(selected, currentPeriodIndex) : "No result for the latest week"} · Clear</small></span></button> : null}
     </div>
+    {selected && <TeamDetailsButton team={historyEntity(selected)} />}
     <div className="ranking-history-scroll">
       <div className="ranking-history-canvas" style={{ "--history-height": `${chartHeight}px` } as CSSProperties}>
         <div className="ranking-history-headings">

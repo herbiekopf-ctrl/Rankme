@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { TeamDetailsButton } from "./TeamDetails";
 import { TeamMark } from "./TeamMark";
 import { loadMyRankingHistory, type SavedRankingHistory, type SavedRankingPlacement } from "@/lib/supabase/rankingHistory";
 import type { RankableEntity } from "@/lib/domain/types";
@@ -12,7 +13,7 @@ function stamp(value: string) {
 
 function placementEntity(placement: SavedRankingPlacement): RankableEntity {
   return {
-    id: `saved:${placement.position}:${placement.name}`,
+    id: placement.entityId,
     entityType: "saved-ranking-item",
     name: placement.name,
     imageUrl: placement.imageUrl ?? undefined,
@@ -35,5 +36,5 @@ export function MyRankings() {
   const [rankings, setRankings] = useState<SavedRankingHistory[]>([]);
   const [message, setMessage] = useState("Loading your ranking history…");
   useEffect(() => { void loadMyRankingHistory().then((items) => { setRankings(items); setMessage(items.length ? "" : "Your saved rankings will appear here."); }).catch(() => setMessage("Sign in to see saved drafts and published rankings.")); }, []);
-  return <section className="my-rankings-panel" aria-labelledby="my-rankings-title"><div className="my-rankings-heading"><div><p className="kicker">RANKING HISTORY</p><h2 id="my-rankings-title">Your rankings</h2><p>Each period has one saved list. See how every pick changes over time.</p></div><div className="history-heading-actions"><span>{rankings.length} saved</span><Link href="/rankings">View consensus →</Link></div></div>{message && <p>{message}</p>}<div className="ranking-history-list">{rankings.map((ranking) => <details key={ranking.id}><summary><div className="history-summary-title"><strong>{ranking.title}</strong><span className={`history-status ${ranking.status}`}>{ranking.status}</span>{ranking.periodTitle ? <span className="history-period">{ranking.periodTitle}</span> : null}</div><time>{ranking.status === "published" && ranking.publishedAt ? `Published ${stamp(ranking.publishedAt)}` : `Updated ${stamp(ranking.updatedAt)}`}</time><small>{ranking.placements.length} ranked</small><RankingPreview placements={ranking.placements} /></summary><ol>{ranking.placements.map((placement) => <li key={placement.position}><span>{placement.position}</span><TeamMark entity={placementEntity(placement)} size="small" /><strong>{placement.name}</strong></li>)}</ol><footer>{ranking.periodTitle ? `${ranking.periodTitle} · ` : ""}Created {stamp(ranking.createdAt)} · Updated {stamp(ranking.updatedAt)} · {ranking.visibility}</footer></details>)}</div></section>;
+  return <section className="my-rankings-panel" aria-labelledby="my-rankings-title"><div className="my-rankings-heading"><div><p className="kicker">RANKING HISTORY</p><h2 id="my-rankings-title">Your rankings</h2><p>Each period has one saved list. See how every pick changes over time.</p></div><div className="history-heading-actions"><span>{rankings.length} saved</span><Link href="/rankings">View consensus →</Link></div></div>{message && <p>{message}</p>}<div className="ranking-history-list">{rankings.map((ranking) => <details key={ranking.id}><summary><div className="history-summary-title"><strong>{ranking.title}</strong><span className={`history-status ${ranking.status}`}>{ranking.status}</span>{ranking.periodTitle ? <span className="history-period">{ranking.periodTitle}</span> : null}</div><time>{ranking.status === "published" && ranking.publishedAt ? `Published ${stamp(ranking.publishedAt)}` : `Updated ${stamp(ranking.updatedAt)}`}</time><small>{ranking.placements.length} ranked</small><RankingPreview placements={ranking.placements} /></summary><ol>{ranking.placements.map((placement) => <li key={placement.position}><span>{placement.position}</span><TeamMark entity={placementEntity(placement)} size="small" /><strong>{placement.isTeam ? <TeamDetailsButton team={placementEntity(placement)} season={ranking.season ?? undefined} /> : placement.name}</strong></li>)}</ol><footer>{ranking.periodTitle ? `${ranking.periodTitle} · ` : ""}Created {stamp(ranking.createdAt)} · Updated {stamp(ranking.updatedAt)} · {ranking.visibility}</footer></details>)}</div></section>;
 }

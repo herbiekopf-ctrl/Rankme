@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       const homeScore = scoreParts ? Number(scoreParts[4]) : null;
       const teamScore = isHome ? homeScore : awayScore;
       const opponentScore = isHome ? awayScore : homeScore;
-      const completed = data.completed === true || (teamScore != null && opponentScore != null);
+      const completed = typeof data.completed === "boolean" ? data.completed : teamScore != null && opponentScore != null;
       const result: EntityGameSnapshot["result"] = completed && teamScore != null && opponentScore != null ? teamScore > opponentScore ? "W" : teamScore < opponentScore ? "L" : "T" : null;
       const opponentEntityId = opponentIdByGame.get(game.id) ?? null;
       const opponent = opponentEntityId ? opponentById.get(opponentEntityId) : null;
@@ -114,7 +114,7 @@ export async function GET(request: Request) {
         result,
         teamScore,
         opponentScore,
-        scoreLabel: completed && teamScore != null && opponentScore != null ? `${teamScore}–${opponentScore}` : "Scheduled",
+        scoreLabel: completed && teamScore != null && opponentScore != null ? `${teamScore}–${opponentScore}` : completed ? "Score unavailable" : "Scheduled",
         venue: typeof data.venue === "string" && data.venue ? data.venue : null,
         difficultyScore: strength?.score ?? null,
         difficultyRank: strength?.rank ?? null,
@@ -126,7 +126,10 @@ export async function GET(request: Request) {
         matchupPosition: matchup?.position ?? null,
         matchupLabel: matchup?.label ?? null,
       };
-    }).sort((left, right) => (left.week ?? 99) - (right.week ?? 99) || String(left.date).localeCompare(String(right.date)));
+    }).sort((left, right) => {
+      const byDate = Date.parse(left.date ?? "") - Date.parse(right.date ?? "");
+      return byDate || (left.week ?? 99) - (right.week ?? 99);
+    });
     const signature = signatureResults(games);
     return NextResponse.json({ entityId, season, games, ...signature } satisfies EntityAnalyticsSnapshot, { headers: { "Cache-Control": "private, max-age=60" } });
   } catch {
